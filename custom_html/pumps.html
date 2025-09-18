@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Bench Status</title>
+    <script src="midas.js"></script>
+    <script src="mhttpd.js"></script>
+    <script src="obsolete.js"></script>
+    <link href="midas.css" rel="stylesheet">
+    <link href="overrides.css" rel="stylesheet">
+    
+<style>
+  .control-panel {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin: 20px;
+    padding: 20px;
+    border: 2px solid #ddd;
+    border-radius: 12px;
+    background: #f9f9f9;
+    max-width: 800px;
+  }
+
+  .panel-section {
+    background: #fff;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  }
+
+  h3 {
+    margin-top: 0;
+    font-size: 1.1em;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+  }
+
+  .readout {
+    font-size: 1em;
+    margin: 8px 0;
+  }
+
+  .value {
+    font-weight: bold;
+    color: #333;
+  }
+
+  .status-item {
+    display: flex;
+    align-items: center;
+    margin: 8px 0;
+    font-size: 1em;
+  }
+
+  .status-circle {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    margin-left: 8px;
+    box-shadow: 0 0 3px rgba(0,0,0,0.2);
+    background: gray; /* default */
+  }
+  .green { background: #2ecc71; }
+  .red { background: #e74c3c; }
+
+  label {
+    display: block;
+    margin: 6px 0;
+    font-size: 0.95em;
+  }.data {
+    display: none;
+}
+.data.visible {
+    display: block;
+}
+#tabs {
+    margin: auto;
+    text-align: center;
+}
+#tabs .tab {
+    margin: .5em 0;
+    border-radius: 0;
+    border: 1px solid rgb(160,160,160);
+    background-color: white;
+    border-left: none;
+    font-size: 16px;
+    transition: .5s;
+    padding: .1em .4em;
+}
+#tabs .tab.selected {
+    background-color: rgb(208, 224, 224);   
+    transition: .5s;
+}
+#tabs .tab:hover {
+    background-color: #e1f2f2;
+}
+#tabs .tab:first-child {
+    border-left: 1px solid rgb(160,160,160);
+    border-radius: 5px 0 0 5px;
+}
+#tabs .tab:last-child {
+    border-radius: 0 5px 5px 0;
+}
+#tabs .tab:disabled {
+    background-color: rgb(221, 221, 221);
+    transition: .5s;
+}
+#tabs .tab.selected:disabled {
+    background-color: rgb(221, 221, 221);
+}
+
+.data table {
+    margin: auto;
+}
+.data td {
+    text-align: right;
+}
+
+.control-panel {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin: 20px;
+    padding: 20px;
+    border: 2px solid #ddd;
+    border-radius: 12px;
+    background: #f9f9f9;
+    max-width: 800px;
+  }
+
+  .panel-section {
+    background: #fff;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  }
+
+  .sub-panel{
+    background: #fff;
+    border-radius: 3px;
+    padding: 5px;
+    display:grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .panel{
+    background: #fff;
+    border-radius: 3px;
+    padding: 5px;
+    display:grid;
+  }
+
+
+  h3 {
+    margin-top: 0;
+    font-size: 1.1em;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+  }
+
+</style>
+
+</head>
+
+<body class="mcss" onload="mhttpd_init('PumpConnection')">
+
+<div id="mheader"></div>
+<div id="msidenav"></div>
+<div id="mmain">
+
+    <div class="control-panel">
+        <div class="panel-section">
+            <h3 class="mtableheader">LED + Stage <input type="button" value="Disable LED"></input></h3>
+            <div class="sub-panel">
+                <input type="button" value="Apply"></input>
+                <select>
+                    <option value="450nm">450 nm</option>
+                    <option value="410nm">419 nm</option>
+                    <option value="365nm">365 nm</option>
+                    <option value="295nm">295 nm</option>
+                    <option value="278nm">278 nm</option>
+                    <option value="255nm">255 nm</option>
+                    <option value="235nm">235 nm</option>
+                </select>
+            </div>
+            <div class="sub-panel">
+                <input type="button" value="Move To:"></input>
+                <input type="number" min=0 max=60 value=10.00 step="0.01"></input>
+            </div>
+            <div class="sub-panel">
+                <input type="button" value="Apply ADC"></input>
+                <input type="number" min=0 max=1023 value=800 step="1"></input>
+            </div>
+            <div class="sub-panel">
+                <input type="button" value="Set Rate"></input>
+                <select>
+                    <option value="2.7 MHz">2.7 MHz</option>
+                    <option value="1.5 kHz">2.7 kHz</option>
+                </select>
+            </div>
+        </div>
+        <div class="panel">
+            <h3 class="mtableheader"> Run Control </h3>
+                <label><input type="checkbox" >Rotate Wavelengths </label>
+                <label><input type="checkbox" >Auto Refill </label>
+                <label><input type="checkbox" > Circulate Water </label>
+                <label><input type="number" value=90 min=30 max=240> Refill Period [min] </label>
+        </div>
+
+        <div class="panel">
+            <h3 class="mtableheader"> Automation </h3>
+                <input type="button" value="Drain Chamber">
+                <input type="button" value="Fill With Tank">
+                <input type="button" value="Fill With RO">
+                <input type="button" value="STOP">
+
+        </div>
+    </div>
+
+
+    <div class="control-panel">
+
+
+
+  <!-- Numeric Values -->
+    <div class="panel-section" >
+    <h3>Pressure</h3>
+
+
+    <p id="inputpres"> Input Pressure: </p>
+    <p id="prefilter"> Input Pressure: </p>
+    <p id="postfilter"> Input Pressure: </p>
+    <p id="osmosis"> Input Pressure: </p>
+
+    <h3>Temperature</h3>
+        
+    <p id="sterilizer"> Sterilizer: </p>
+    <p id="tube1"> Input Pressure: </p>
+    <p id="tube2"> Input Pressure: </p>
+
+    <h3>Light Level</h3>
+    <p id="monitorl"> Sterilizer: </p>
+    <p id="receiverl"> Input Pressure: </p>
+
+
+  </div>
+
+  <!-- Boolean Status -->
+  <div class="panel-section">
+    
+    <h3>Flow Status</h3>
+    <div class="status-item" id="flow0">
+      Input Flow <span class="status-circle red"></span>
+    </div>
+    <div class="status-item" id="flow1">
+      Input Flow <span class="status-circle red"></span>
+    </div>
+    <div class="status-item" id="flow2">
+      Input Flow <span class="status-circle red"></span>
+    </div>
+    <div class="status-item" id="flow3">
+      Input Flow <span class="status-circle red"></span>
+    </div>
+    <div class="status-item" id="flow4">
+      Input Flow <span class="status-circle red"></span>
+    </div>
+
+    <h3>Water Level Indicators</h3>
+    <div class="status-item" id="water0">
+      Input Flow <span class="status-circle red"></span>
+    </div>
+    <div class="status-item" id="water1">
+      Input Flow <span class="status-circle red"></span>
+    </div>
+    <div class="status-item" id="water2">
+      Input Flow <span class="status-circle red"></span>
+    </div>
+
+  </div>
+
+  
+  <!-- Controls -->
+  <div class="panel-section">
+    <h3>Pump Control</h3>
+    <label><input type="checkbox" onclick='clickHandler(this,0, 0);'> Input Pump</label>
+    <label><input type="checkbox" onclick='clickHandler(this,0, 1);'> Drain Pump</label>
+    <label><input type="checkbox" onclick='clickHandler(this,0, 2);'> Return Pump</label>
+
+    <h3>Solenoid Valves</h3>
+    <label><input type="checkbox" onclick='clickHandler(this,1, 0);'> SV1</label>
+    <label><input type="checkbox" onclick='clickHandler(this,1, 1);'> SV2</label>
+    <label><input type="checkbox" onclick='clickHandler(this,1, 2);'> SV3</label>
+
+    <h3>Ball Valves</h3>
+    <label><input type="checkbox" onclick='clickHandler(this,2, 0);'> BV1</label>
+    <label><input type="checkbox" onclick='clickHandler(this,2, 1);'> BV2</label>
+    <label><input type="checkbox" onclick='clickHandler(this,2, 2);'> BV3</label>
+    <label><input type="checkbox" onclick='clickHandler(this,2, 3);'> BV1</label>
+    <label><input type="checkbox" onclick='clickHandler(this,2, 4);'> BV2</label>
+    <label><input type="checkbox" onclick='clickHandler(this,2, 5);'> BV3</label>
+
+  </div>
+
+
+<script type="text/javascript">
+
+    var updateTimerId = 0;
+    var updatePeriod = 2500; // 10000; // in msec
+
+    
+
+    function clickHandler(cb, interface, index){
+        if(interface==0){
+            ODBSet("/Equipment/PumpConnection/Settings/Pump["+index+"+]", ((cb.checked) ? 1 : 0))
+        }
+        if(interface==1){
+            ODBSet("/Equipment/PumpConnection/Settings/Solenoid["+index+"+]", ((cb.checked) ? 1 : 0))
+        }
+        if (interface==2){
+            ODBSet("/Equipment/PumpConnection/Settings/BallValve["+index+"+]", ((cb.checked) ? 1 : 0))
+        }
+        
+    }
+
+    function load() {
+
+        mjsonrpc_db_get_values(["/Equipment/PumpConnection/Variables/PRES"]).then(function (rpc) {
+            
+            var status = rpc.result.status;
+            var slow = rpc.result.data[0];
+            document.getElementById("inputpres").innerHTML ="Input: <b>" + slow[0] +" psi</b>"
+            document.getElementById("prefilter").innerHTML ="Pre-Filter: <b>" + slow[1] +" psi</b>"
+            document.getElementById("postfilter").innerHTML ="Post-Filter: <b>" + slow[2] +" psi</b>"
+            document.getElementById("osmosis").innerHTML ="Osmosis: <b>" + slow[3] +" psi</b>"
+
+        })
+
+        mjsonrpc_db_get_values(["/Equipment/PumpConnection/Variables/TEMP"]).then(function (rpc) {
+            
+            var status = rpc.result.status;
+            var slow = rpc.result.data[0];
+            document.getElementById("sterilizer").innerHTML ="Sterilizer: <b>" + slow[0] +" C</b>"
+            document.getElementById("tube1").innerHTML ="Chamber Low: <b>" + slow[1] +" C</b>"
+            document.getElementById("tube2").innerHTML ="Chamber Upper: <b>" + slow[2] +" C</b>"
+
+        })
+        mjsonrpc_db_get_values(["/Equipment/PumpConnection/Variables/LIGH"]).then(function (rpc) {
+            
+            var status = rpc.result.status;
+            var slow = rpc.result.data[0];
+            document.getElementById("monitorl").innerHTML ="Monitor: <b>" + slow[0] +" lux</b>"
+            document.getElementById("receiverl").innerHTML ="Receiver: <b>" + slow[1] +" lux</b>"
+        })
+
+        mjsonrpc_db_get_values(["/Equipment/PumpConnection/Variables/FLOW"]).then(function (rpc) {
+            
+            var status = rpc.result.status;
+            var slow = rpc.result.data[0];
+            document.getElementById("flow0").innerHTML = "Input Flow <span class='status-circle " + ((slow[0]>0) ? "green" : "red") + "'></span>"
+            document.getElementById("flow1").innerHTML = "Chamber Flow <span class='status-circle " + ((slow[1]>0) ? "green" : "red") + "'></span>"
+            document.getElementById("flow2").innerHTML = "Overflow <span class='status-circle " + ((slow[2]>0) ? "green" : "red") + "'></span>"
+            document.getElementById("flow3").innerHTML = "Drain Flow <span class='status-circle " + ((slow[3]>0) ? "green" : "red") + "'></span>"
+            document.getElementById("flow4").innerHTML = "Removal Flow <span class='status-circle " + ((slow[4]>0) ? "green" : "red") + "'></span>"
+
+        })
+
+        mjsonrpc_db_get_values(["/Equipment/PumpConnection/Variables/WATE"]).then(function (rpc) {
+            
+            var status = rpc.result.status;
+            var slow = rpc.result.data[0];
+            document.getElementById("water0").innerHTML = "Upper Level <span class='status-circle " + ((slow[2]>0) ? "green" : "red") + "'></span>"
+            document.getElementById("water1").innerHTML = "Middel Level <span class='status-circle " + ((slow[1]>0) ? "green" : "red") + "'></span>"
+            document.getElementById("water2").innerHTML = "Lower Level <span class='status-circle " + ((slow[0]>0) ? "green" : "red") + "'></span>"
+
+        })
+    }
+    function update(){
+        clearTimeout(updateTimerId);
+        load()
+        updateTimerId = setTimeout('update()', updatePeriod);
+        
+    }
+    function main()
+      {
+      clearTimeout(updateTimerId);
+      
+      }
+
+    update()
+
+</script>
+
+</div>
+
+
+</div>
+
+</body>
+</html>
+
+
+
+
+

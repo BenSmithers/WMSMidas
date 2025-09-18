@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PTF Scan Settings</title>
+    <script src="midas.js"></script>
+    <script src="mhttpd.js"></script>
+    <link href="midas.css" rel="stylesheet">
+    <link href="overrides.css" rel="stylesheet">
+
+<script>
+
+</script>
+
+
+<style>
+.data {
+    display: none;
+}
+.data.visible {
+    display: block;
+}
+#tabs {
+    margin: auto;
+    text-align: center;
+}
+#tabs .tab {
+    margin: .5em 0;
+    border-radius: 0;
+    border: 1px solid rgb(160,160,160);
+    background-color: white;
+    border-left: none;
+    font-size: 16px;
+    transition: .5s;
+    padding: .1em .4em;
+}
+#tabs .tab.selected {
+    background-color: rgb(208, 224, 224);   
+    transition: .5s;
+}
+#tabs .tab:hover {
+    background-color: #e1f2f2;
+}
+#tabs .tab:first-child {
+    border-left: 1px solid rgb(160,160,160);
+    border-radius: 5px 0 0 5px;
+}
+#tabs .tab:last-child {
+    border-radius: 0 5px 5px 0;
+}
+#tabs .tab:disabled {
+    background-color: rgb(221, 221, 221);
+    transition: .5s;
+}
+#tabs .tab.selected:disabled {
+    background-color: rgb(221, 221, 221);
+}
+
+.data table {
+    margin: auto;
+}
+.data td {
+    text-align: right;
+}
+
+  .status-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 80px);
+    gap: 20px;
+    margin: 20px;
+    text-align: center;
+  }
+
+  .status-item {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* space between circle and label */
+  }
+
+  .status-circle {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    box-shadow: 0 0 5px rgba(0,0,0,0.2);
+    margin-bottom: 8px;
+  }
+.status-circle.green {
+background-color: #2ecc71; /* Green */
+}
+
+.status-circle.red {
+background-color: #e74c3c; /* Red */
+}
+
+.status-label {
+    font-size: 14px;
+    color: #333;
+  }
+.control-panel {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin: 20px;
+    padding: 20px;
+    border: 2px solid #ddd;
+    border-radius: 12px;
+    background: #f9f9f9;
+    max-width: 800px;
+  }
+.panel-section {
+    background: #fff;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  }
+.sub-panel{
+    grid-template-columns: repeat(4, 1fr);
+    background: #fff;
+    border-radius: 3px;
+    padding: 5px;
+    display:block;
+  }
+  .two-panel{
+    grid-template-columns: repeat(2, 1fr);
+    background: #fff;
+    border-radius: 3px;
+    padding: 5px;
+    display:grid;
+  }
+</style>
+
+</head>
+
+<body class="mcss" onload="mhttpd_init('ScanSettings')">
+
+<div id="mheader"></div>
+<div id="msidenav"></div>
+
+<div id="mmain">
+
+<div class='control-panel'>
+  
+  <div class="panel-section">
+    <h3 class="mtableheader">PMT0 Statuses</h3>  
+     <table id="status" > 
+        <tr> 
+            <th> On</th> <td><div class="status-circle green" title="ON"></div></td>
+            <th> Ramp Down</th> <td><div class="status-circle red" title="Ramp Down"></div></td>
+            <th> Ramp Up</th> <td><div class="status-circle green" title="Ramp Up"></div></td>
+            <th> Over Voltage</th> <td><div class="status-circle green" title="Over Voltage"></div></td>
+        </tr>
+        <tr> 
+            <th>Over Current </th> <td><div class="status-circle red" title="Over Current"></div></td>
+            <th>No Cal</th> <td><div class="status-circle green" title="No Cal"></div></td>
+            <th>Res 1</th> <td><div class="status-circle green" title="Res 1"></div></td>
+            <th>Res 2</th> <td><div class="status-circle green" title="Res 2"></div></td>
+        </tr>
+        <tr> 
+            <th>Under Voltage</th> <td><div class="status-circle red" title="Under Voltage"></div></td>
+            <th>Max Voltage</th> <td><div class="status-circle red" title="Max Voltage"></div></td>
+            <th>Trip!</th> <td><div class="status-circle green" title="Trip"></div></td>
+            <th>OVP</th> <td><div class="status-circle green" title="OVP"></div></td>
+        </tr>
+        <tr> 
+            <th>Res 0</th> <td><div class="status-circle green" title="Res 0"></div></td>
+            <th>Dis </th> <td><div class="status-circle green" title="Dis"></div></td>
+            <th>Kill</th> <td><div class="status-circle red" title="Kill"></div></td>
+            <th>ILK</th> <td><div class="status-circle red" title="ILK"></div></td>
+        </tr>
+
+  </table>
+  </div>
+
+  <div class="panel-section">
+    <h3 class="mtableheader">PMT1 Statuses</h3>  
+    <table id="status" > 
+        <tr> 
+            <th> On</th> <td><div class="status-circle green" title="ON"></div></td>
+            <th> Ramp Down</th> <td><div class="status-circle red" title="Ramp Down"></div></td>
+            <th> Ramp Up</th> <td><div class="status-circle green" title="Ramp Up"></div></td>
+            <th> Over Voltage</th> <td><div class="status-circle green" title="Over Voltage"></div></td>
+        </tr>
+        <tr> 
+            <th>Over Current </th> <td><div class="status-circle red" title="Over Current"></div></td>
+            <th>No Cal</th> <td><div class="status-circle green" title="No Cal"></div></td>
+            <th>Res 1</th> <td><div class="status-circle green" title="Res 1"></div></td>
+            <th>Res 2</th> <td><div class="status-circle green" title="Res 2"></div></td>
+        </tr>
+        <tr> 
+            <th>Under Voltage</th> <td><div class="status-circle red" title="Under Voltage"></div></td>
+            <th>Max Voltage</th> <td><div class="status-circle red" title="Max Voltage"></div></td>
+            <th>Trip!</th> <td><div class="status-circle green" title="Trip"></div></td>
+            <th>OVP</th> <td><div class="status-circle green" title="OVP"></div></td>
+        </tr>
+        <tr> 
+            <th>Res 0</th> <td><div class="status-circle green" title="Res 0"></div></td>
+            <th>Dis </th> <td><div class="status-circle green" title="Dis"></div></td>
+            <th>Kill</th> <td><div class="status-circle red" title="Kill"></div></td>
+            <th>ILK</th> <td><div class="status-circle red" title="ILK"></div></td>
+        </tr>
+  </table>
+  </div>
+
+  
+  <div class="panel-section">
+    <h3 class="mtableheader">PMT0 Control</h3>  
+      <div class="sub-panel">
+                <label>Voltage: </label>
+                <input type="number" min=0 max=1000 value=900.00 step="1"></input>
+                <label> Value: <b> 900 V</b></label>
+                <input type="button" value="Apply"></input>
+            </div>
+        <div class="two-panel" >
+                <input type="button" value="Power On"></input>
+                <input type="button" value="Power Off"></input>
+        </div>
+  </div>
+
+  <div class="panel-section">
+    <h3 class="mtableheader">PMT1 Control</h3>  
+      <div class="sub-panel" >
+                <label>Voltage: </label>
+                <input type="number" min=0 max=1000 value=900.00 step="1"></input>
+                <label> Value: <b> 900 V</b></label>
+                <input type="button" value="Apply"></input>
+        </div>
+        <div class="two-panel" >
+                <input type="button" value="Power On"></input>
+                <input type="button" value="Power Off"></input>
+        </div>
+  </div>
+
+</div>
+
+</div>
+</body>
+</html>

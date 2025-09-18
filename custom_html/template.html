@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PTF Scan Settings</title>
+    <script src="midas.js"></script>
+    <script src="mhttpd.js"></script>
+    <link href="midas.css" rel="stylesheet">
+    <link href="overrides.css" rel="stylesheet">
+
+<script>
+
+</script>
+
+
+<style>
+.data {
+    display: none;
+}
+.data.visible {
+    display: block;
+}
+#tabs {
+    margin: auto;
+    text-align: center;
+}
+#tabs .tab {
+    margin: .5em 0;
+    border-radius: 0;
+    border: 1px solid rgb(160,160,160);
+    background-color: white;
+    border-left: none;
+    font-size: 16px;
+    transition: .5s;
+    padding: .1em .4em;
+}
+#tabs .tab.selected {
+    background-color: rgb(208, 224, 224);   
+    transition: .5s;
+}
+#tabs .tab:hover {
+    background-color: #e1f2f2;
+}
+#tabs .tab:first-child {
+    border-left: 1px solid rgb(160,160,160);
+    border-radius: 5px 0 0 5px;
+}
+#tabs .tab:last-child {
+    border-radius: 0 5px 5px 0;
+}
+#tabs .tab:disabled {
+    background-color: rgb(221, 221, 221);
+    transition: .5s;
+}
+#tabs .tab.selected:disabled {
+    background-color: rgb(221, 221, 221);
+}
+
+.data table {
+    margin: auto;
+}
+.data td {
+    text-align: right;
+}
+</style>
+
+</head>
+
+<body class="mcss" >  <!-- </body>onload="mhttpd_init('ScanSettings')"> -->
+
+<div id="mheader"></div>
+<div id="msidenav"></div>
+<div id="mmain">
+
+</div>
+</body>
+</body>
