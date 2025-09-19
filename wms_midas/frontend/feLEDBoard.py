@@ -8,6 +8,18 @@ import collections
 
 from wms_midas.utilities import LEDBoard
 
+waves = ["",
+    "450nm",
+    "410nm",
+    "365nm",
+    "295nm",
+    "278nm",
+    "255nm",
+    "235nm",
+    "Align 1",
+    "Align 2"
+]
+
 class LEDMidas(midas.frontend.EquipmentBase, LEDBoard):
     def __init__(self, client: midas.client.MidasClient):
         devName = "LEDBoard"
@@ -39,25 +51,26 @@ class LEDMidas(midas.frontend.EquipmentBase, LEDBoard):
             3 - RS/RF 
             4 - TI/TE 
         """
-        if path=="/Equipment/LEDBoard/Settings/configuration":
-            if idx==0:
-                self.enable() if new_value else self.disable()
-            elif idx==1:
-                self.set_adc(new_value)
-            elif idx==2:
-                self.activate_led(new_value)
-            elif idx==3:
-                self.set_fast_rate() if new_value else self.set_slow_rate()
-            elif idx==4:
-                self.set_int_trigger() if new_value else self.set_ext_trigger()
-            else:
-                self.client.msg("No handler for index {}".format(idx))
-                return 
-            
-            new_path = "/Equipment/LEDBoard/Variables/configuration"
-            self.client.odb_set(new_path+"[{}]".format(idx),new_value,False ,resize_arrays=False)
+        
+        if path=="/Equipment/LEDBoard/Settings/enabled":
+            self.client.msg("Enabling LED" if new_value else "Disabling LED")
+            self.enable() if new_value else self.disable()
+        elif path=="/Equipment/LEDBoard/Settings/ADC":
+            self.client.msg("Setting ADC to {}".format(new_value))
+            self.set_adc(new_value)
+        elif path=="/Equipment/LEDBoard/Settings/LED":
+            self.activate_led(new_value) 
+            self.client.msg("Activating {} LED".format(waves[new_value]))
+        elif path=="/Equipment/LEDBoard/Settings/rate":
+            self.set_fast_rate() if new_value else self.set_slow_rate()
+            self.client.msg("Fast Rate" if new_value else "Slow Rate")
+        elif path=="/Equipment/LEDBoard/Settings/IntTrigger":
+            self.set_int_trigger() if new_value else self.set_ext_trigger() 
         else:
-            self.client.msg("No handler for {}".format(path))
+            self.client.msg("No handler for index {}".format(idx))
+            return 
+        newpath = path.replace("Settings", "Variables")
+        self.client.odb_set(newpath,new_value,True ,resize_arrays=False)
 
 
 class feLEDBoard(midas.frontend.FrontendBase):
