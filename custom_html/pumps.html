@@ -170,41 +170,44 @@
 
     <div class="control-panel">
         <div class="panel-section">
-            <h3 class="mtableheader">LED + Stage <input type="button" value="Disable LED"></input></h3>
+            <h3 class="mtableheader">LED + Stage <input type="button" value="Disable LED" onclick="disable_led()"></input></h3>
             <div class="sub-panel">
-                <input type="button" value="Apply"></input>
-                <select>
-                    <option value="450nm">450 nm</option>
-                    <option value="410nm">419 nm</option>
-                    <option value="365nm">365 nm</option>
-                    <option value="295nm">295 nm</option>
-                    <option value="278nm">278 nm</option>
-                    <option value="255nm">255 nm</option>
-                    <option value="235nm">235 nm</option>
+                <input type="button" value="Apply" onclick="apply_wavelength()"></input>
+                <select id="wavelength_select">
+                    <option value="1">450 nm</option>
+                    <option value="2">405 nm</option>
+                    <option value="3">365 nm</option>
+                    <option value="4">295 nm</option>
+                    <option value="5">278 nm</option>
+                    <option value="6">255 nm</option>
+                    <option value="7">235 nm</option>
+                    <option value="8">Align 1</option>
+                    <option value="9">Align 2</option>
                 </select>
             </div>
             <div class="sub-panel">
-                <input type="button" value="Move To:"></input>
-                <input type="number" min=0 max=60 value=10.00 step="0.01"></input>
+                <input type="button" value="Move To:" onclick="apply_position()"></input>
+                <input type="number" min=0 max=60 value=10.00 step="0.01" id="position"></input>
             </div>
             <div class="sub-panel">
-                <input type="button" value="Apply ADC"></input>
-                <input type="number" min=0 max=1023 value=800 step="1"></input>
+                <input type="button" value="Apply ADC" onclick="apply_adc()"></input>
+                <input type="number" min=0 max=1023 value=800 step="1" id='adc_value'></input>
             </div>
             <div class="sub-panel">
-                <input type="button" value="Set Rate"></input>
-                <select>
-                    <option value="2.7 MHz">2.7 MHz</option>
-                    <option value="1.5 kHz">2.7 kHz</option>
+                <input type="button" value="Set Rate" onclick="apply_rate()"></input>
+                <select id='rate_select'>
+                    <option value=0>1.5 kHz</option>
+                    <option value=1>2.7 MHz</option>
+                    
                 </select>
             </div>
         </div>
         <div class="panel">
             <h3 class="mtableheader"> Run Control </h3>
-                <label><input type="checkbox" >Rotate Wavelengths </label>
-                <label><input type="checkbox" >Auto Refill </label>
-                <label><input type="checkbox" > Circulate Water </label>
-                <label><input type="number" value=90 min=30 max=240> Refill Period [min] </label>
+                <label><input type="checkbox" onclick="rotate_toggle(this)" id='rotate_check'>Rotate Wavelengths </label>
+                <label><input type="checkbox" onclick="refill_toggle(this)" id='refill_check'>Auto Refill </label>
+                <label><input type="checkbox" onclick="circulate_toggle(this)" id='circulate_check'> Circulate Water </label>
+                <label><input type="number" value=90 min=30 max=240 id='refill_period'> Refill Period [min] </label>
         </div>
 
         <div class="panel">
@@ -213,7 +216,6 @@
                 <input type="button" value="Fill With Tank">
                 <input type="button" value="Fill With RO">
                 <input type="button" value="STOP">
-
         </div>
     </div>
 
@@ -295,9 +297,9 @@
     <label><input type="checkbox" onclick='clickHandler(this,2, 0);'> BV1</label>
     <label><input type="checkbox" onclick='clickHandler(this,2, 1);'> BV2</label>
     <label><input type="checkbox" onclick='clickHandler(this,2, 2);'> BV3</label>
-    <label><input type="checkbox" onclick='clickHandler(this,2, 3);'> BV1</label>
-    <label><input type="checkbox" onclick='clickHandler(this,2, 4);'> BV2</label>
-    <label><input type="checkbox" onclick='clickHandler(this,2, 5);'> BV3</label>
+    <label><input type="checkbox" onclick='clickHandler(this,2, 3);'> BV4</label>
+    <label><input type="checkbox" onclick='clickHandler(this,2, 4);'> BV5</label>
+    <label><input type="checkbox" onclick='clickHandler(this,2, 5);'> BV6</label>
 
   </div>
 
@@ -308,6 +310,60 @@
     var updatePeriod = 2500; // 10000; // in msec
 
     
+    function disable_led(){
+      ODBSet("/Equipment/LEDBoard/Settings/Enabled", 0)
+    }
+
+    function apply_wavelength(dd){
+      // will do a lot 
+      var element = document.getElementById('wavelength_select').value
+      ODBSet("/Equipment/LEDBoard/Settings/LED",element)
+    
+    }
+
+    function apply_position(){
+      //position 
+      ODBSet("/Equipment/ELLXStage/Settings/dest", document.getElementById("position").value)
+
+    }
+
+    function apply_adc(){
+      //adc_value
+      ODBSet("/Equipment/LEDBoard/Settings/ADC", document.getElementById("adc_value").value)
+      ODBSet("/Equipment/LEDBoard/Settings/Enabled", 1)
+    }
+
+    function apply_rate(){
+      ODBSet("/Equipment/LEDBoard/Settings/rate", document.getElementById("rate_select").value)
+      ODBSet("/Equipment/LEDBoard/Settings/Enabled", 1)
+    }
+
+    function rotate_toggle(ch){
+      consol.log(ch.checked)
+    
+    }
+
+    function refill_toggle(ch){
+    }
+
+    function circulate_toggle(ch){
+    }
+
+    function auto_drain(){
+
+    }
+
+    function auto_fill(){
+
+    }
+
+    function auto_ro(){
+
+    }
+
+    function stop_button(){
+
+    }
 
     function clickHandler(cb, interface, index){
         if(interface==0){
