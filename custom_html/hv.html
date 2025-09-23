@@ -2,13 +2,100 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>PTF Scan Settings</title>
+    <title>HV Settings</title>
     <script src="midas.js"></script>
     <script src="mhttpd.js"></script>
+    <script src="obsolete.js"></script>
     <link href="midas.css" rel="stylesheet">
     <link href="overrides.css" rel="stylesheet">
 
 <script>
+    var updateTimerId = 0;
+    var updatePeriod = 1000; // 10000; // in msec
+
+    function pmton(which){
+      ODBSet("/Equipment/CAENBOX"+which+"/Settings/Enabled", 1)
+    }
+    function pmtoff(which){
+      ODBSet("/Equipment/CAENBOX"+which+"/Settings/Enabled", 0)
+    }
+
+
+    function preload(){
+
+    }
+
+    function load(){
+      mjsonrpc_db_get_values(["/Equipment/CAENBox1/Variables/status"]).then(function (rpc) {
+            var status = rpc.result.status;
+            var slow = rpc.result.data[0];
+            document.getElementById("pmt1on").innerHTML =   slow[0] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+            document.getElementById("pmt1rampup").innerHTML =   slow[1] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+            document.getElementById("pmt1rampdown").innerHTML =   slow[2] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+            document.getElementById("pmt1ovv").innerHTML =   slow[3] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+
+            document.getElementById("pmt1ovc").innerHTML =   slow[4] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+            document.getElementById("pmt1nocal").innerHTML =   slow[13] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+            document.getElementById("pmt1res1").innerHTML =   slow[14] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+            document.getElementById("pmt1res2").innerHTML =   slow[15] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+
+            document.getElementById("pmt1uvv").innerHTML =   slow[5] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+            document.getElementById("pmt1maxv").innerHTML =   slow[6] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+            document.getElementById("pmt1trip").innerHTML =   slow[7] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+            document.getElementById("pmt1ovp").innerHTML =   slow[8] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+
+            document.getElementById("pmt1res0").innerHTML =   slow[9] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+            document.getElementById("pmt1dis").innerHTML =   slow[10] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+            document.getElementById("pmt1kill").innerHTML =   slow[11] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+            document.getElementById("pmt1ilk").innerHTML =   slow[12] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+        })
+
+      mjsonrpc_db_get_values(["/Equipment/CAENBox0/Variables/status"]).then(function (rpc) {
+            var status = rpc.result.status;
+            var slow = rpc.result.data[0];
+            document.getElementById("pmt0on").innerHTML =   slow[0] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+            document.getElementById("pmt0rampup").innerHTML =   slow[1] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+            document.getElementById("pmt0rampdown").innerHTML =   slow[2] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+            document.getElementById("pmt0ovv").innerHTML =   slow[3] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+
+            document.getElementById("pmt0ovc").innerHTML =   slow[4] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+            document.getElementById("pmt0nocal").innerHTML =   slow[13] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+            document.getElementById("pmt0res1").innerHTML =   slow[14] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+            document.getElementById("pmt0res2").innerHTML =   slow[15] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+
+            document.getElementById("pmt0uvv").innerHTML =   slow[5] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+            document.getElementById("pmt0maxv").innerHTML =   slow[6] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+            document.getElementById("pmt0trip").innerHTML =   slow[7] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+            document.getElementById("pmt0ovp").innerHTML =   slow[8] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+
+            document.getElementById("pmt0res0").innerHTML =   slow[9] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+            document.getElementById("pmt0dis").innerHTML =   slow[10] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+            document.getElementById("pmt0kill").innerHTML =   slow[11] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+            document.getElementById("pmt0ilk").innerHTML =   slow[12] ? '<div class="status-circle green" title="ON"></div>': '<div class="status-circle red" title="ON"></div>'
+        })
+
+      mjsonrpc_db_get_values(["/Equipment/CAENBox0/Variables/voltage_read"]).then(function (rpc) {
+            var status = rpc.result.status;
+            var slow = rpc.result.data[0];
+            document.getElementById("voltage0").innerHTML =   "Value: <b>" + slow + " V</b>"
+
+        })
+      mjsonrpc_db_get_values(["/Equipment/CAENBox1/Variables/voltage_read"]).then(function (rpc) {
+            var status = rpc.result.status;
+            var slow = rpc.result.data[0];
+            document.getElementById("voltage1").innerHTML =  "Value: <b>" + slow + " V</b>"
+
+        })
+    }
+  
+    function update(){
+        clearTimeout(updateTimerId);
+        load()
+        updateTimerId = setTimeout('update()', updatePeriod);
+        
+    }
+    preload()
+    update()
 
 </script>
 
@@ -85,11 +172,11 @@
     margin-bottom: 8px;
   }
 .status-circle.green {
-background-color: #2ecc71; /* Green */
+background-color: #fff45c; /* Green */
 }
 
 .status-circle.red {
-background-color: #e74c3c; /* Red */
+background-color: #cdcfb9; /* Red */
 }
 
 .status-label {
@@ -142,30 +229,30 @@ background-color: #e74c3c; /* Red */
   
   <div class="panel-section">
     <h3 class="mtableheader">PMT0 Statuses</h3>  
-     <table id="status" > 
+     <table id="status0" > 
         <tr> 
-            <th> On</th> <td><div class="status-circle green" title="ON"></div></td>
-            <th> Ramp Down</th> <td><div class="status-circle red" title="Ramp Down"></div></td>
-            <th> Ramp Up</th> <td><div class="status-circle green" title="Ramp Up"></div></td>
-            <th> Over Voltage</th> <td><div class="status-circle green" title="Over Voltage"></div></td>
+            <th> On</th> <td id="pmt0on"><div class="status-circle green" title="ON"></div></td>
+            <th> Ramp Down</th> <td id=pmt0rampdown><div class="status-circle red" title="Ramp Down"></div></td>
+            <th> Ramp Up</th> <td id="pmt0rampup"><div class="status-circle green" title="Ramp Up"></div></td>
+            <th> Over Voltage</th> <td id="pmt0ovv"><div class="status-circle green" title="Over Voltage"></div></td>
         </tr>
         <tr> 
-            <th>Over Current </th> <td><div class="status-circle red" title="Over Current"></div></td>
-            <th>No Cal</th> <td><div class="status-circle green" title="No Cal"></div></td>
-            <th>Res 1</th> <td><div class="status-circle green" title="Res 1"></div></td>
-            <th>Res 2</th> <td><div class="status-circle green" title="Res 2"></div></td>
+            <th>Over Current </th> <td id="pmt0ovc"><div class="status-circle red" title="Over Current"></div></td>
+            <th>No Cal</th> <td id="pmt0nocal"><div class="status-circle green" title="No Cal"></div></td>
+            <th>Res 1</th> <td  id="pmt0res1"><div class="status-circle green" title="Res 1"></div></td>
+            <th>Res 2</th> <td  id="pmt0res2"><div class="status-circle green" title="Res 2"></div></td>
         </tr>
         <tr> 
-            <th>Under Voltage</th> <td><div class="status-circle red" title="Under Voltage"></div></td>
-            <th>Max Voltage</th> <td><div class="status-circle red" title="Max Voltage"></div></td>
-            <th>Trip!</th> <td><div class="status-circle green" title="Trip"></div></td>
-            <th>OVP</th> <td><div class="status-circle green" title="OVP"></div></td>
+            <th>Under Voltage</th> <td id="pmt0uvv"><div class="status-circle red" title="Under Voltage"></div></td>
+            <th>Max Voltage</th> <td  id="pmt0maxv"><div class="status-circle red" title="Max Voltage"></div></td>
+            <th>Trip!</th> <td  id="pmt0trip"><div class="status-circle green" title="Trip"></div></td>
+            <th>OVP</th> <td id="pmt0ovp"><div class="status-circle green" title="OVP"></div></td>
         </tr>
         <tr> 
-            <th>Res 0</th> <td><div class="status-circle green" title="Res 0"></div></td>
-            <th>Dis </th> <td><div class="status-circle green" title="Dis"></div></td>
-            <th>Kill</th> <td><div class="status-circle red" title="Kill"></div></td>
-            <th>ILK</th> <td><div class="status-circle red" title="ILK"></div></td>
+            <th>Res 0</th> <td  id="pmt0res0"><div class="status-circle green" title="Res 0"></div></td>
+            <th>Dis </th> <td  id="pmt0dis"><div class="status-circle green" title="Dis"></div></td>
+            <th>Kill</th> <td  id="pmt0kill"><div class="status-circle red" title="Kill"></div></td>
+            <th>ILK</th> <td  id="pmt0ilk"><div class="status-circle red" title="ILK"></div></td>
         </tr>
 
   </table>
@@ -173,30 +260,30 @@ background-color: #e74c3c; /* Red */
 
   <div class="panel-section">
     <h3 class="mtableheader">PMT1 Statuses</h3>  
-    <table id="status" > 
+    <table id="status1" > 
         <tr> 
-            <th> On</th> <td><div class="status-circle green" title="ON"></div></td>
-            <th> Ramp Down</th> <td><div class="status-circle red" title="Ramp Down"></div></td>
-            <th> Ramp Up</th> <td><div class="status-circle green" title="Ramp Up"></div></td>
-            <th> Over Voltage</th> <td><div class="status-circle green" title="Over Voltage"></div></td>
+            <th> On</th> <td id="pmt1on"><div class="status-circle green" title="ON"></div></td>
+            <th> Ramp Down</th> <td id=pmt1rampdown><div class="status-circle red" title="Ramp Down"></div></td>
+            <th> Ramp Up</th> <td id="pmt1rampup"><div class="status-circle green" title="Ramp Up"></div></td>
+            <th> Over Voltage</th> <td id="pmt1ovv"><div class="status-circle green" title="Over Voltage"></div></td>
         </tr>
         <tr> 
-            <th>Over Current </th> <td><div class="status-circle red" title="Over Current"></div></td>
-            <th>No Cal</th> <td><div class="status-circle green" title="No Cal"></div></td>
-            <th>Res 1</th> <td><div class="status-circle green" title="Res 1"></div></td>
-            <th>Res 2</th> <td><div class="status-circle green" title="Res 2"></div></td>
+            <th>Over Current </th> <td id="pmt1ovc"><div class="status-circle red" title="Over Current"></div></td>
+            <th>No Cal</th> <td id="pmt1nocal"><div class="status-circle green" title="No Cal"></div></td>
+            <th>Res 1</th> <td  id="pmt1res1"><div class="status-circle green" title="Res 1"></div></td>
+            <th>Res 2</th> <td  id="pmt1res2"><div class="status-circle green" title="Res 2"></div></td>
         </tr>
         <tr> 
-            <th>Under Voltage</th> <td><div class="status-circle red" title="Under Voltage"></div></td>
-            <th>Max Voltage</th> <td><div class="status-circle red" title="Max Voltage"></div></td>
-            <th>Trip!</th> <td><div class="status-circle green" title="Trip"></div></td>
-            <th>OVP</th> <td><div class="status-circle green" title="OVP"></div></td>
+            <th>Under Voltage</th> <td id="pmt1uvv"><div class="status-circle red" title="Under Voltage"></div></td>
+            <th>Max Voltage</th> <td  id="pmt1maxv"><div class="status-circle red" title="Max Voltage"></div></td>
+            <th>Trip!</th> <td  id="pmt1trip"><div class="status-circle green" title="Trip"></div></td>
+            <th>OVP</th> <td id="pmt1ovp"><div class="status-circle green" title="OVP"></div></td>
         </tr>
         <tr> 
-            <th>Res 0</th> <td><div class="status-circle green" title="Res 0"></div></td>
-            <th>Dis </th> <td><div class="status-circle green" title="Dis"></div></td>
-            <th>Kill</th> <td><div class="status-circle red" title="Kill"></div></td>
-            <th>ILK</th> <td><div class="status-circle red" title="ILK"></div></td>
+            <th>Res 0</th> <td  id="pmt1res0"><div class="status-circle green" title="Res 0"></div></td>
+            <th>Dis </th> <td  id="pmt1dis"><div class="status-circle green" title="Dis"></div></td>
+            <th>Kill</th> <td  id="pmt1kill"><div class="status-circle red" title="Kill"></div></td>
+            <th>ILK</th> <td  id="pmt1ilk"><div class="status-circle red" title="ILK"></div></td>
         </tr>
   </table>
   </div>
@@ -207,12 +294,12 @@ background-color: #e74c3c; /* Red */
       <div class="sub-panel">
                 <label>Voltage: </label>
                 <input type="number" min=0 max=1000 value=900.00 step="1"></input>
-                <label> Value: <b> 900 V</b></label>
+                <label id="voltage0"> Value: <b> 900 V</b></label>
                 <input type="button" value="Apply"></input>
             </div>
         <div class="two-panel" >
-                <input type="button" value="Power On"></input>
-                <input type="button" value="Power Off"></input>
+                <input type="button" value="Power On" onclick="pmton(0)"></input>
+                <input type="button" value="Power Off" onclick="pmtoff(0)"></input>
         </div>
   </div>
 
@@ -221,12 +308,12 @@ background-color: #e74c3c; /* Red */
       <div class="sub-panel" >
                 <label>Voltage: </label>
                 <input type="number" min=0 max=1000 value=900.00 step="1"></input>
-                <label> Value: <b> 900 V</b></label>
+                <label id="voltage1"> Value: <b> 900 V</b></label>
                 <input type="button" value="Apply"></input>
         </div>
         <div class="two-panel" >
-                <input type="button" value="Power On"></input>
-                <input type="button" value="Power Off"></input>
+                <input type="button" value="Power On" onclick="pmton(1)"></input>
+                <input type="button" value="Power Off" onclick="pmtoff(1)"></input>
         </div>
   </div>
 
