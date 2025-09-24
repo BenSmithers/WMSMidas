@@ -138,18 +138,24 @@
 
   .sub-panel{
     background: #fff;
-    border-radius: 3px;
+    border-radius: 10px;
     padding: 5px;
     display:grid;
     grid-template-columns: repeat(2, 1fr);
+
   }
   .panel{
     background: #fff;
-    border-radius: 3px;
+    border-radius: 10px;
     padding: 5px;
     display:grid;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
   }
 
+  .flat-panel{
+    display:block;
+    grid-template-columns: repeat(3, 1fr);
+  }
 
   h3 {
     margin-top: 0;
@@ -190,6 +196,10 @@
                 <input type="number" min=0 max=60 value=10.00 step="0.01" id="position"></input>
             </div>
             <div class="sub-panel">
+              <label>Position: </label>
+              <label id="pos_lbl">20.0mm</label>
+            </div>
+            <div class="sub-panel">
                 <input type="button" value="Apply ADC" onclick="apply_adc()"></input>
                 <input type="number" min=0 max=1023 value=800 step="1" id='adc_value'></input>
             </div>
@@ -214,6 +224,11 @@
             <h3 class="mtableheader"> Automation </h3>
                 <input type="button" value="Drain Chamber">
                 <input type="button" value="Fill With Tank">
+                <div class="flat-panel">
+                  <input type="checkbox" id="filter">Filters</input>
+                  <input type="checkbox" id="uv_sterile">UV Sterile</input>
+                  <input type="checkbox" id="deionize">De-Ion</input>
+                </div>
                 <input type="button" value="Fill With RO">
                 <input type="button" value="STOP">
         </div>
@@ -284,22 +299,22 @@
   <!-- Controls -->
   <div class="panel-section">
     <h3>Pump Control</h3>
-    <label><input type="checkbox" onclick='clickHandler(this,0, 0);'> Input Pump</label>
-    <label><input type="checkbox" onclick='clickHandler(this,0, 1);'> Drain Pump</label>
-    <label><input type="checkbox" onclick='clickHandler(this,0, 2);'> Return Pump</label>
+    <label><input type="checkbox" id="pump1" onclick='clickHandler(this,0, 0);'> Input Pump</label>
+    <label><input type="checkbox" id="pump2" onclick='clickHandler(this,0, 1);'> Drain Pump</label>
+    <label><input type="checkbox" id="pump3" onclick='clickHandler(this,0, 2);'> Return Pump</label>
 
     <h3>Solenoid Valves</h3>
-    <label><input type="checkbox" onclick='clickHandler(this,1, 0);'> SV1</label>
-    <label><input type="checkbox" onclick='clickHandler(this,1, 1);'> SV2</label>
-    <label><input type="checkbox" onclick='clickHandler(this,1, 2);'> SV3</label>
+    <label><input type="checkbox" id="sv1" onclick='clickHandler(this,1, 0);'> Input</label>
+    <label><input type="checkbox" id="sv2"onclick='clickHandler(this,1, 1);'> Pre-Chamber</label>
+    <label><input type="checkbox" id="sv3"onclick='clickHandler(this,1, 2);'> Degasser</label>
 
     <h3>Ball Valves</h3>
-    <label><input type="checkbox" onclick='clickHandler(this,2, 0);'> BV1</label>
-    <label><input type="checkbox" onclick='clickHandler(this,2, 1);'> BV2</label>
-    <label><input type="checkbox" onclick='clickHandler(this,2, 2);'> BV3</label>
-    <label><input type="checkbox" onclick='clickHandler(this,2, 3);'> BV4</label>
-    <label><input type="checkbox" onclick='clickHandler(this,2, 4);'> BV5</label>
-    <label><input type="checkbox" onclick='clickHandler(this,2, 5);'> BV6</label>
+    <label><input type="checkbox" id="bv1" onclick='clickHandler(this,2, 0);'> Input Swap</label>
+    <label><input type="checkbox" id="bv2" onclick='clickHandler(this,2, 1);'> Filters</label>
+    <label><input type="checkbox" id="bv3" onclick='clickHandler(this,2, 2);'> UV Sterilizer</label>
+    <label><input type="checkbox" id="bv4" onclick='clickHandler(this,2, 3);'> De-Ionizer</label>
+    <label><input type="checkbox" id="bv5" onclick='clickHandler(this,2, 4);'> Osmosis</label>
+    <label><input type="checkbox" id="bv6" onclick='clickHandler(this,2, 5);'> Chamber</label>
 
   </div>
 
@@ -354,7 +369,9 @@
     }
 
     function auto_fill(){
-
+      var filters = document.getElementById("filter").checked
+      var ionizer = document.getElementById("deionize").checked
+      var sterile = document.getElementById("uv_sterile").checked 
     }
 
     function auto_ro(){
@@ -378,16 +395,44 @@
         
     }
 
+    function preload(){
+      mjsonrpc_db_get_values(["/Equipment/ELLXStage/Settings/dest"]).then(function (rpc) {
+            
+            var status = rpc.result.status;
+            var slow = rpc.result.data[0];
+            
+            document.getElementById("position").value = slow
+
+        })
+      mjsonrpc_db_get_values(["/Equipment/LEDBoard/Settings/ADC"]).then(function (rpc) {
+            
+            var status = rpc.result.status;
+            var slow = rpc.result.data[0];
+            
+            document.getElementById("adc_value").value = slow
+
+        })
+    }
+
     function load() {
+
+        mjsonrpc_db_get_values(["/Equipment/ELLXStage/Variables/dest"]).then(function (rpc) {
+            
+            var status = rpc.result.status;
+            var slow = rpc.result.data[0];
+            
+            document.getElementById("pos_lbl").innerHTML = slow
+
+        })
 
         mjsonrpc_db_get_values(["/Equipment/PumpConnection/Variables/PRES"]).then(function (rpc) {
             
             var status = rpc.result.status;
             var slow = rpc.result.data[0];
-            document.getElementById("inputpres").innerHTML ="Input: <b>" + slow[0] +" psi</b>"
-            document.getElementById("prefilter").innerHTML ="Pre-Filter: <b>" + slow[1] +" psi</b>"
-            document.getElementById("postfilter").innerHTML ="Post-Filter: <b>" + slow[2] +" psi</b>"
-            document.getElementById("osmosis").innerHTML ="Osmosis: <b>" + slow[3] +" psi</b>"
+            document.getElementById("inputpres").innerHTML ="Input: <b>" + slow[0].toFixed(2) +" psi</b>"
+            document.getElementById("prefilter").innerHTML ="Pre-Filter: <b>" + slow[1].toFixed(2) +" psi</b>"
+            document.getElementById("postfilter").innerHTML ="Post-Filter: <b>" + slow[2].toFixed(2) +" psi</b>"
+            document.getElementById("osmosis").innerHTML ="Osmosis: <b>" + slow[3].toFixed(2) +" psi</b>"
 
         })
 
@@ -395,17 +440,17 @@
             
             var status = rpc.result.status;
             var slow = rpc.result.data[0];
-            document.getElementById("sterilizer").innerHTML ="Sterilizer: <b>" + slow[0] +" C</b>"
-            document.getElementById("tube1").innerHTML ="Chamber Low: <b>" + slow[1] +" C</b>"
-            document.getElementById("tube2").innerHTML ="Chamber Upper: <b>" + slow[2] +" C</b>"
+            document.getElementById("sterilizer").innerHTML ="Sterilizer: <b>" + slow[0].toFixed(2) +" C</b>"
+            document.getElementById("tube1").innerHTML ="Chamber Low: <b>" + slow[1].toFixed(2) +" C</b>"
+            document.getElementById("tube2").innerHTML ="Chamber Upper: <b>" + slow[2].toFixed(2) +" C</b>"
 
         })
         mjsonrpc_db_get_values(["/Equipment/PumpConnection/Variables/LIGH"]).then(function (rpc) {
             
             var status = rpc.result.status;
             var slow = rpc.result.data[0];
-            document.getElementById("monitorl").innerHTML ="Monitor: <b>" + slow[0] +" lux</b>"
-            document.getElementById("receiverl").innerHTML ="Receiver: <b>" + slow[1] +" lux</b>"
+            document.getElementById("monitorl").innerHTML ="Monitor: <b>" + slow[0].toFixed(2) +" lux</b>"
+            document.getElementById("receiverl").innerHTML ="Receiver: <b>" + slow[1].toFixed(2) +" lux</b>"
         })
 
         mjsonrpc_db_get_values(["/Equipment/PumpConnection/Variables/FLOW"]).then(function (rpc) {
@@ -429,6 +474,33 @@
             document.getElementById("water2").innerHTML = "Lower Level <span class='status-circle " + ((slow[0]>0) ? "green" : "red") + "'></span>"
 
         })
+        mjsonrpc_db_get_values(["/Equipment/PumpConnection/Settings/Pump"]).then(function (rpc) {
+            var status = rpc.result.status;
+            var slow = rpc.result.data[0];
+            document.getElementById("pump1").checked = slow[0]
+            document.getElementById("pump2").checked = slow[1]
+            document.getElementById("pump3").checked =  slow[2]
+
+        })
+        mjsonrpc_db_get_values(["/Equipment/PumpConnection/Settings/Solenoid"]).then(function (rpc) {
+            var status = rpc.result.status;
+            var slow = rpc.result.data[0];
+            document.getElementById("sv1").checked = slow[0]
+            document.getElementById("sv2").checked = slow[1]
+            document.getElementById("sv3").checked =  slow[2]
+
+        })
+        mjsonrpc_db_get_values(["/Equipment/PumpConnection/Settings/BallValve"]).then(function (rpc) {
+            var status = rpc.result.status;
+            var slow = rpc.result.data[0];
+            document.getElementById("bv1").checked = slow[0]
+            document.getElementById("bv2").checked = slow[1]
+            document.getElementById("bv3").checked =  slow[2]
+            document.getElementById("bv4").checked =  slow[3]
+            document.getElementById("bv5").checked =  slow[4]
+            document.getElementById("bv6").checked =  slow[5]
+
+        })
     }
     function update(){
         clearTimeout(updateTimerId);
@@ -442,6 +514,7 @@
       
       }
 
+    preload()
     update()
 
 </script>
