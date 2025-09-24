@@ -36,8 +36,8 @@ class HVBox(midas.frontend.EquipmentBase, CAENBox):
 
     def readout_func(self):
         status = self.read_state()
-        this_v = self.read_voltage()["value"]
-        this_i = self.read_current()["value"]
+        this_v = float(self.read_voltage()["value"])
+        this_i = float(self.read_current()["value"])
 
 
         status_vector = []
