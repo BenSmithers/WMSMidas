@@ -369,17 +369,28 @@
     }
 
     function auto_fill(){
-      var filters = document.getElementById("filter").checked
-      var ionizer = document.getElementById("deionize").checked
-      var sterile = document.getElementById("uv_sterile").checked 
+      // this is called when the "Fill with tank" button is pressed
+      // so we now will drain then fill 
+      var filters = Number(document.getElementById("filter").checked)
+      var ionizer = Number(document.getElementById("deionize").checked)
+      var sterile = Number(document.getElementById("uv_sterile").checked) 
+
+      var setting = 10 + filters + 2*sterile + 4*ionizer
+
+      ODBSet("/Equipment/Automator/Settings/state_major", 2)
+      ODBSet("/Equipment/Automator/Settings/state_minor", setting)
+
+
     }
 
     function auto_ro(){
-
+      ODBSet("/Equipment/Automator/Settings/state_major", 2)
+      ODBSet("/Equipment/Automator/Settings/state_minor", 31)
     }
 
     function stop_button(){
-
+      ODBSet("/Equipment/Automator/Settings/state_major", 10)
+      ODBSet("/Equipment/Automator/Settings/state_minor", 0)
     }
 
     function clickHandler(cb, interface, index){
