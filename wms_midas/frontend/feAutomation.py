@@ -65,6 +65,8 @@ scr
     6 - Smart Pumped Flow 
         Same as 4 or 5, but pump only on for return water 
 
+    10 - explicit stop! 
+
 """
 
 import midas.client
@@ -101,6 +103,11 @@ class Automator(midas.frontend.EquipmentBase):
 
         self.client = client 
         midas.frontend.EquipmentBase.__init__(self, client, equip_name, default_common, default_settings)
+    
+    def run_start(self, run_no):
+        pass
+    def run_end(self, run_no):
+        pass 
 
     def clear_state(self):
         self.client.msg("Exiting Automation")
@@ -108,23 +115,40 @@ class Automator(midas.frontend.EquipmentBase):
         self.client.odb_set("Equipment/Automator/Settings/state_minor", 0, False)
         self.client.odb_set("/Equipment/Automator/Variables/counter", 0)
 
+    def configure_state(self, pumps, ballvalves, solenoids):
+        if not len(pumps)==3:
+            self.client.msg("Incorrectly configured pump-state config received: {}".format(pumps), is_error=True)
+        if not len(ballvalves)==6:
+            self.client.msg("Incorrectly configured ball-valve-state config received: {}".format(ballvalves), is_error=True)
+        if not len(solenoids)==3:
+            self.client.msg("Incorrectly configured solenoid-state config received: {}".format(solenoids), is_error=True)
+
+        # pumps should be the first thing turned off, and last thing enabled
+        for i in range(len(pumps)):
+            if not pumps[i]: # if pump should be off 
+                # check - is it on? If so, turn it off 
+                if self.client.odb_get("/Equipment/PumpConnection/Settings/Pump[{}]".format(i)): self.client.odb_set("/Equipment/PumpConnection/Settings/Pump[{}]".format(i), 0)
+        
+        # then check the ball valves 
+        for i in range(len(ballvalves)):
+            if ballvalves[i]: # turn it on if it's off 
+                if (not self.client.odb_get("/Equipment/PumpConnection/Settings/BallValve[{}]".format(i))): self.client.odb_set("/Equipment/PumpConnection/Settings/BallValve[{}]".format(i), 1)
+            else: # turn it off if it's on 
+                if (self.client.odb_get("/Equipment/PumpConnection/Settings/BallValve[{}]".format(i))): self.client.odb_set("/Equipment/PumpConnection/Settings/BallValve[{}]".format(i), 0)
+
+        # then check the ball valves 
+        for i in range(len(solenoids)):
+            if solenoids[i]: # turn it on if it's off 
+                if (not self.client.odb_get("/Equipment/PumpConnection/Settings/Solenoid[{}]".format(i))): self.client.odb_set("/Equipment/PumpConnection/Settings/Solenoid[{}]".format(i), 1)
+            else: # turn it off if it's on 
+                if (self.client.odb_get("/Equipment/PumpConnection/Settings/Solenoid[{}]".format(i))): self.client.odb_set("/Equipment/PumpConnection/Settings/Solenoid[{}]".format(i), 0)
+
     def disable_all(self):
         # disable all pumps, solenoid valves, and ball valves 
-        if self.client.odb_get("/Equipment/PumpConnection/Settings/Pump[0]"): self.client.odb_set("/Equipment/PumpConnection/Settings/Pump[0]", 0)
-        if self.client.odb_get("/Equipment/PumpConnection/Settings/Pump[1]"): self.client.odb_set("/Equipment/PumpConnection/Settings/Pump[1]", 0)
-        if self.client.odb_get("/Equipment/PumpConnection/Settings/Pump[2]"): self.client.odb_set("/Equipment/PumpConnection/Settings/Pump[2]", 0)
+        self.client.odb_set("Equipment/Automator/Settings/state_minor", 0, False)
+        self.client.odb_set("Equipment/Automator/Settings/state_major", 0, False)
 
-        if self.client.odb_get("/Equipment/PumpConnection/Settings/BallValve[0]"): self.client.odb_set("/Equipment/PumpConnection/Settings/BallValve[0]", 0)
-        if self.client.odb_get("/Equipment/PumpConnection/Settings/BallValve[1]"): self.client.odb_set("/Equipment/PumpConnection/Settings/BallValve[1]", 0)
-        if self.client.odb_get("/Equipment/PumpConnection/Settings/BallValve[2]"): self.client.odb_set("/Equipment/PumpConnection/Settings/BallValve[2]", 0)
-        if self.client.odb_get("/Equipment/PumpConnection/Settings/BallValve[3]"): self.client.odb_set("/Equipment/PumpConnection/Settings/BallValve[3]", 0)
-        if self.client.odb_get("/Equipment/PumpConnection/Settings/BallValve[4]"): self.client.odb_set("/Equipment/PumpConnection/Settings/BallValve[4]", 0)
-        if self.client.odb_get("/Equipment/PumpConnection/Settings/BallValve[5]"): self.client.odb_set("/Equipment/PumpConnection/Settings/BallValve[5]", 0)
-
-        if self.client.odb_get("/Equipment/PumpConnection/Settings/Solenoid[0]"): self.client.odb_set("/Equipment/PumpConnection/Settings/Solenoid[0]", 0)        
-        if self.client.odb_get("/Equipment/PumpConnection/Settings/Solenoid[1]"): self.client.odb_set("/Equipment/PumpConnection/Settings/Solenoid[1]", 0)      
-        if self.client.odb_get("/Equipment/PumpConnection/Settings/Solenoid[2]"): self.client.odb_set("/Equipment/PumpConnection/Settings/Solenoid[2]", 0)      
-        
+        self.configure_state([0,0,0], [0,0,0,0,0,0], [0,0,0])
 
     def readout_func(self):
         """
@@ -135,7 +159,9 @@ class Automator(midas.frontend.EquipmentBase):
 
         is_draining = major_state==1 or (major_state==2 and minor_state<128) or (major_state==3 and minor_state<128)
 
-        if major_state==0:
+        if major_state==10:
+            self.disable_all()
+        elif major_state==0:
             """
             Do some simple checks against danger
             """
@@ -145,7 +171,7 @@ class Automator(midas.frontend.EquipmentBase):
             drain_pump = self.client.odb_get("/Equipment/PumpConnection/Settings/Pump[1]")
             if drain_pump!=1: 
                 # just starting - set turn the pump on. Set the counter to zero
-                self.client.odb_set("/Equipment/PumpConnection/Settings/Pump[1]", 1)
+                self.configure_state([0,1,0], [0,0,0,0,0,0], [0,0,0])
                 self.client.odb_set("/Equipment/Automator/Variables/counter", 0)
             else: 
                 counter_value = self.client.odb_get("/Equipment/Automator/Variables/counter")
@@ -153,7 +179,7 @@ class Automator(midas.frontend.EquipmentBase):
                 if counter_value>=self._drain_ticks:
                     # disable pump, disable automation 
                     if major_state==1:
-                        self.client.odb_set("/Equipment/PumpConnection/Settings/Pump[1]", 0)
+                        self.configure_state([0,0,0], [0,0,0,0,0,0], [0,0,0])
                     else:
                         # we shift the minor state up by 128
                         self.client.odb_set("Equipment/Automator/Settings/state_minor", minor_state + 128, False)
@@ -174,25 +200,15 @@ class Automator(midas.frontend.EquipmentBase):
             bv2_state = self.client.odb_get("/Equipment/PumpConnection/Settings/BallValve[1]")
             bv3_state = self.client.odb_get("/Equipment/PumpConnection/Settings/BallValve[2]")
             bv4_state = self.client.odb_get("/Equipment/PumpConnection/Settings/BallValve[3]")
+            bv5_state = self.client.odb_get("/Equipment/PumpConnection/Settings/BallValve[4]")
             bv6_state = self.client.odb_get("/Equipment/PumpConnection/Settings/BallValve[5]")
-
-            if not sv1_state:
-                self.client.odb_set("/Equipment/PumpConnection/Settings/Solenoid[0]", 1)
-            if not sv2_state:
-                self.client.odb_set("/Equipment/PumpConnection/Settings/Solenoid[1]", 1)
-
-            if not input_pump_state:
-                # turn it on... 
-                self.client.odb_set("/Equipment/PumpConnection/Settings/Pump[0]", 1)
-
-
+            
             # determine desired settings based on micro state 
             # the first 128 are reserved for draining
             filter_number = minor_state - 128 
             supply_water = filter_number<20 
             return_water = filter_number<30 and not supply_water
             reverse_osmosis = (not supply_water) and not(return_water)
-
             if supply_water:
                 shift = 10
             elif return_water:
@@ -200,38 +216,93 @@ class Automator(midas.frontend.EquipmentBase):
             else:
                 shift = 30
 
-            if supply_water or return_water:
-                micro_charcoal = (filter_number - shift) % 1 == 1
-                if ((not bv2_state) and micro_charcoal) or ((bv2_state) and (not micro_charcoal)):
-                    self.client.odb_set("/Equipment/PumpConnection/Settings/BallValve[1]", int(micro_charcoal))
 
-                uv_lamp = (filter_number - shift) % 2 == 2
-                if ((not bv3_state) and uv_lamp) or (bv3_state and (not uv_lamp)):
-                    self.client.odb_set("/Equipment/PumpConnection/Settings/BallValve[2]", int(uv_lamp))
+            if reverse_osmosis:
+                if not bv5_state:
+                    self.client.odb_set("/Equipment/PumpConnection/Settings/BallValve[4]", 1)
+                p1 = self.client.odb_get("/Equipment/PumpConnection/Settings/PRES[0]") 
+                p4 = self.client.odb_get("/Equipment/PumpConnection/Settings/PRES[3]") 
+                if filter_number==31: # pressurizing
+                    self.client.odb_set("/Equipment/Automator/Variables/counter", 0)
 
-                ion_filter = (filter_number - shift) % 4 == 4
-                if ((not bv4_state) and ion_filter) or (bv4_state and (not ion_filter)):
-                    self.client.odb_set("/Equipment/PumpConnection/Settings/BallValve[3]", int(ion_filter))
-                
-                # bv 6 should only be turned on after a little bit 
-                # we wait 10 counts
-                if counter_value<10:
+                    self.configure_state([1,0,0], [0,0,0,0,1,1], [1,0,0])
+
+                    if p1>70: # input pressure check 
+                        self.client.odb_set("Equipment/Automator/Settings/state_minor", minor_state + 1, False)
+                    elif p4>22: # check osmo pressure 
+                        self.client.odb_set("Equipment/Automator/Settings/state_minor", minor_state + 2, False)
+
+
+                elif filter_number==32: # filling RO tank 
+                    self.configure_state([0,0,0], [0,0,0,0,1,1], [0,0,0])
+                    if (p4>22 or counter_value>10): # fill chamber 
+                        self.client.odb_set("Equipment/Automator/Settings/state_minor", minor_state + 1, False)
+                    elif p1<50: # re-pressurize
+                        self.client.odb_set("Equipment/Automator/Settings/state_minor", minor_state - 1, False)
                     self.client.odb_set("/Equipment/Automator/Variables/counter",counter_value+1)
+
+
+                elif filter_number==33: # filling chamber
+                    self.client.odb_set("/Equipment/Automator/Variables/counter", 0)
+                    self.configure_state([0,0,0], [0,0,0,0,1,1], [1,0,1])
+                    if p4<5.6 or p1<35:
+                        self.client.odb_set("Equipment/Automator/Settings/state_minor", minor_state - 2, False)
+                        
+                    else:
+                        self.configure_state([0,0,0], [0,0,0,0,1,1], [1,1,1])
+                        if (not self.client.odb_get("/Equipment/PumpConnection/Settings/Solenoid[1]")): self.client.odb_set("/Equipment/PumpConnection/Settings/Solenoid[1]", 1)
+
+                elif filter_number==34: # bleeding RO tank 
+                    self.configure_state([0,0,0], [0,0,0,0,1,0], [0,1,0])
+                    
                 else:
-                    if not bv6_state:
-                        self.client.odb_set("/Equipment/PumpConnection/Settings/BallValve[5]", 1)
+                    self.client.msg("Unrecognized minor state {} - exiting ".format(filter_number))
+                    self.disable_all()
 
-                    # water may be overflowing -  meaning the chamber is full
-                    if overflow:
-                        if counter_value>self._overflow_tick:
-                            # we have finished filling! 
-                            self.clear_state()
-                            self.disable_all()
+
+            else:
+                if not sv1_state:
+                    self.client.odb_set("/Equipment/PumpConnection/Settings/Solenoid[0]", 1)
+                if not sv2_state:
+                    self.client.odb_set("/Equipment/PumpConnection/Settings/Solenoid[1]", 1)
+
+                if not input_pump_state:
+                    # turn it on... 
+                    self.client.odb_set("/Equipment/PumpConnection/Settings/Pump[0]", 1)
+
+
+                if supply_water or return_water:
+                    micro_charcoal = (filter_number - shift) % 1 == 1
+                    if ((not bv2_state) and micro_charcoal) or ((bv2_state) and (not micro_charcoal)):
+                        self.client.odb_set("/Equipment/PumpConnection/Settings/BallValve[1]", int(micro_charcoal))
+
+                    uv_lamp = (filter_number - shift) % 2 == 2
+                    if ((not bv3_state) and uv_lamp) or (bv3_state and (not uv_lamp)):
+                        self.client.odb_set("/Equipment/PumpConnection/Settings/BallValve[2]", int(uv_lamp))
+
+                    ion_filter = (filter_number - shift) % 4 == 4
+                    if ((not bv4_state) and ion_filter) or (bv4_state and (not ion_filter)):
+                        self.client.odb_set("/Equipment/PumpConnection/Settings/BallValve[3]", int(ion_filter))
+                    
+                    # bv 6 should only be turned on after a little bit 
+                    # we wait 10 counts
+                    if counter_value<10:
                         self.client.odb_set("/Equipment/Automator/Variables/counter",counter_value+1)
+                    else:
+                        if not bv6_state:
+                            self.client.odb_set("/Equipment/PumpConnection/Settings/BallValve[5]", 1)
+
+                        # water may be overflowing -  meaning the chamber is full
+                        if overflow:
+                            if counter_value>self._overflow_tick:
+                                # we have finished filling! 
+                                self.clear_state()
+                                self.disable_all()
+                            self.client.odb_set("/Equipment/Automator/Variables/counter",counter_value+1)
 
 
-                    else: # if it's not overflowing, keep the counter at 10 
-                        self.client.odb_set("/Equipment/Automator/Variables/counter",10)
+                        else: # if it's not overflowing, keep the counter at 10 
+                            self.client.odb_set("/Equipment/Automator/Variables/counter",10)
         else:
             self.client.msg("Unrecognized states: {} and {}".format(major_state, minor_state), True)
             self.clear_state()
@@ -245,6 +316,13 @@ class feAutomation(midas.frontend.FrontendBase):
         midas.frontend.FrontendBase.__init__(self, "feAutomation")
         self.add_equipment(frontend_name(self.client))
 
+    def begin_of_run(self, run_number):
+        self.equipment["Automator"].run_start(run_number)
+
+
+    def end_of_run(self, run_number):
+        self.equipment["Automator"].run_end(run_number) 
+    
 
 if __name__ == "__main__":
 
