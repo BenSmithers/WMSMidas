@@ -88,12 +88,14 @@ class Automator(midas.frontend.EquipmentBase):
         default_common.buffer_name = "SYSTEM"
         default_common.trigger_mask = 0
         default_common.event_id = 11
-        default_common.period_ms = 2250 # every two seconds? 
+        default_common.period_ms = 2500 # every two seconds? 
         default_common.read_when = midas.RO_ALWAYS
         default_common.log_history = 60 #NOT SURE IF THIS MUST BE UNIQUE 
 
         self._drain_ticks = 5
         self._overflow_ticks = 5
+
+        
 
         default_settings = collections.OrderedDict([  
             ("dev",devName),
@@ -102,12 +104,16 @@ class Automator(midas.frontend.EquipmentBase):
         ]) 
 
         self.client = client 
+
+        self.buffer_handle = self.client.open_event_buffer("SYSTEM")
+        self.request_id = client.register_event_request(self.buffer_handle, event_id=10)
+        self._running = False 
         midas.frontend.EquipmentBase.__init__(self, client, equip_name, default_common, default_settings)
     
     def run_start(self, run_no):
-        pass
+        self._running = True
     def run_end(self, run_no):
-        pass 
+        self._running = False 
 
     def clear_state(self):
         self.client.msg("Exiting Automation")
@@ -154,6 +160,12 @@ class Automator(midas.frontend.EquipmentBase):
         """
             Progress the automator 
         """
+
+        event = self.client.receive_event(self.buffer_handle, async_flag=True)
+        if event is not None:
+            # an event was received... we should step the LED board/stage forwards if we're doing that 
+            pass 
+
         major_state = self.settings["state_major"]
         minor_state = self.settings["state_minor"]
 
@@ -193,6 +205,7 @@ class Automator(midas.frontend.EquipmentBase):
             counter_value = self.client.odb_get("/Equipment/Automator/Variables/counter")
 
             overflow = bool(self.client.odb_get("/Equipment/PumpConnection/Settings/Flow[2]"))
+            outflow = bool(self.client.odb_get("/Equipment/PumpConnection/Settings/Flow[4]"))
             input_pump_state = self.client.odb_get("/Equipment/PumpConnection/Settings/Pump[0]")
             sv1_state = self.client.odb_get("/Equipment/PumpConnection/Settings/Solenoid[0]")
             sv2_state = self.client.odb_get("/Equipment/PumpConnection/Settings/Solenoid[0]")
@@ -220,11 +233,11 @@ class Automator(midas.frontend.EquipmentBase):
             if reverse_osmosis:
                 if not bv5_state:
                     self.client.odb_set("/Equipment/PumpConnection/Settings/BallValve[4]", 1)
+
                 p1 = self.client.odb_get("/Equipment/PumpConnection/Settings/PRES[0]") 
                 p4 = self.client.odb_get("/Equipment/PumpConnection/Settings/PRES[3]") 
                 if filter_number==31: # pressurizing
-                    self.client.odb_set("/Equipment/Automator/Variables/counter", 0)
-
+                    self.client.odb_set("/Equipment/Automator/Variables/timestamp", time.time())
                     self.configure_state([1,0,0], [0,0,0,0,1,1], [1,0,0])
 
                     if p1>70: # input pressure check 
@@ -234,16 +247,38 @@ class Automator(midas.frontend.EquipmentBase):
 
 
                 elif filter_number==32: # filling RO tank 
+                    osmo_last_time = self.client.odb_get("/Equipment/Automator/Variables/timestamp")
+
                     self.configure_state([0,0,0], [0,0,0,0,1,1], [0,0,0])
-                    if (p4>22 or counter_value>10): # fill chamber 
+                    if overflow:
+                        self.client.odb_set("/Equipment/Automator/Variables/counter",counter_value+1)
+                        if counter_value>5:
+                            event = midas.event.Event()
+                            event.create_bank(
+                                "TUBE", midas.TID_FLOAT, time.time()
+                            )
+                            self.client.odb_set("Equipment/Automator/Settings/state_minor", minor_state + 2, False)
+                            return event 
+                    else:
+                        self.client.odb_set("/Equipment/Automator/Variables/counter",0) 
+                    if (p4>22 or ((time.time()-osmo_last_time)/60)>1): # fill chamber 
                         self.client.odb_set("Equipment/Automator/Settings/state_minor", minor_state + 1, False)
                     elif p1<50: # re-pressurize
                         self.client.odb_set("Equipment/Automator/Settings/state_minor", minor_state - 1, False)
-                    self.client.odb_set("/Equipment/Automator/Variables/counter",counter_value+1)
-
 
                 elif filter_number==33: # filling chamber
-                    self.client.odb_set("/Equipment/Automator/Variables/counter", 0)
+                    self.client.odb_set("/Equipment/Automator/Variables/timestamp", time.time())
+                    if overflow:
+                        self.client.odb_set("/Equipment/Automator/Variables/counter",counter_value+1)
+                        if counter_value>5:
+                            event = midas.event.Event()
+                            event.create_bank(
+                                "TUBE", midas.TID_FLOAT, time.time()
+                            )
+                            self.client.odb_set("Equipment/Automator/Settings/state_minor", minor_state + 1, False)
+                            return event 
+                    else:
+                        self.client.odb_set("/Equipment/Automator/Variables/counter",0) 
                     self.configure_state([0,0,0], [0,0,0,0,1,1], [1,0,1])
                     if p4<5.6 or p1<35:
                         self.client.odb_set("Equipment/Automator/Settings/state_minor", minor_state - 2, False)
@@ -254,6 +289,11 @@ class Automator(midas.frontend.EquipmentBase):
 
                 elif filter_number==34: # bleeding RO tank 
                     self.configure_state([0,0,0], [0,0,0,0,1,0], [0,1,0])
+                    self.client.odb_set("Equipment/Automator/Settings/state_minor", minor_state +1 , False)
+                elif filter_number==35:
+                    if not outflow:
+                        self.configure_state([0,0,0], [0,0,0,0,0,0], [0,0,0])
+                        self.clear_state()
                     
                 else:
                     self.client.msg("Unrecognized minor state {} - exiting ".format(filter_number))
