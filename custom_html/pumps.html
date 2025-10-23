@@ -217,7 +217,7 @@
                 <label><input type="checkbox" onclick="rotate_toggle(this)" id='rotate_check'>Rotate Wavelengths </label>
                 <label><input type="checkbox" onclick="refill_toggle(this)" id='refill_check'>Auto Refill </label>
                 <label><input type="checkbox" onclick="circulate_toggle(this)" id='circulate_check'> Circulate Water </label>
-                <label><input type="number" value=90 min=30 max=240 id='refill_period'> Refill Period [min] </label>
+                <label><input type="number" value=90 min=30 max=240 id='refill_period' onchange="refill_change(this)"> Refill Period [min] </label>
         </div>
 
         <div class="panel">
@@ -225,9 +225,9 @@
                 <input type="button" value="Drain Chamber">
                 <input type="button" value="Fill With Tank">
                 <div class="flat-panel">
-                  <input type="checkbox" id="filter">Filters</input>
-                  <input type="checkbox" id="uv_sterile">UV Sterile</input>
-                  <input type="checkbox" id="deionize">De-Ion</input>
+                  <input type="checkbox" id="filter" onclick="filter_toggle(this)">Filters</input>
+                  <input type="checkbox" id="uv_sterile" onclick="uv_toggle(this)">UV Sterile</input>
+                  <input type="checkbox" id="deionize" onclick="deion_toggle(this)">De-Ion</input>
                 </div>
                 <input type="button" value="Fill With RO">
                 <input type="button" value="STOP">
@@ -354,14 +354,31 @@
     }
 
     function rotate_toggle(ch){
-      consol.log(ch.checked)
-    
+      ODBSet("Equipment/Automator/Settings/rotate_waves", ch.checked)
+    }
+
+    function refill_change(ch){
+      ODBSet("Equipment/Automator/Settings/refill_period", ch.value)
     }
 
     function refill_toggle(ch){
+      ODBSet("Equipment/Automator/Settings/auto_refill", ch.checked)
     }
 
     function circulate_toggle(ch){
+      ODBSet("Equipment/Automator/Settings/auto_circulate", ch.checked)
+    }
+
+    function filter_toggle(ch){
+      ODBSet("Equipment/Automator/Settings/filters", ch.checked)
+    }
+
+    function uv_toggle(ch){
+      ODBSet("Equipment/Automator/Settings/uv_sterile", ch.checked)
+    }
+
+    function deion_toggle(ch){
+      ODBSet("Equipment/Automator/Settings/de_ion", ch.checked)
     }
 
     function auto_drain(){
@@ -423,6 +440,54 @@
             document.getElementById("adc_value").value = slow
 
         })
+    
+
+      mjsonrpc_db_get_values(["Equipment/Automator/Settings/rotate_waves"]).then(function (rpc) {
+              
+              var status = rpc.result.status;
+              var slow = rpc.result.data[0];
+              document.getElementById("rotate_check").checked = slow
+          })
+      
+      mjsonrpc_db_get_values(["Equipment/Automator/Settings/auto_refill"]).then(function (rpc) {
+              
+              var status = rpc.result.status;
+              var slow = rpc.result.data[0];
+              document.getElementById("refill_check").checked = slow
+          })
+
+      mjsonrpc_db_get_values(["Equipment/Automator/Settings/auto_circulate"]).then(function (rpc) {
+              
+              var status = rpc.result.status;
+              var slow = rpc.result.data[0];
+              document.getElementById("circulate_check").checked = slow
+          })
+      mjsonrpc_db_get_values(["Equipment/Automator/Settings/refill_period"]).then(function (rpc) {
+              
+              var status = rpc.result.status;
+              var slow = rpc.result.data[0];
+              document.getElementById("refill_period").value = slow
+          })
+      
+      mjsonrpc_db_get_values(["Equipment/Automator/Settings/filters"]).then(function (rpc) {
+              
+              var status = rpc.result.status;
+              var slow = rpc.result.data[0];
+              document.getElementById("filter").checked = slow
+          })
+      mjsonrpc_db_get_values(["Equipment/Automator/Settings/uv_sterile"]).then(function (rpc) {
+              
+              var status = rpc.result.status;
+              var slow = rpc.result.data[0];
+              document.getElementById("uv_sterile").checked = slow
+          })
+      mjsonrpc_db_get_values(["Equipment/Automator/Settings/de_ion"]).then(function (rpc) {
+              
+              var status = rpc.result.status;
+              var slow = rpc.result.data[0];
+              document.getElementById("deionize").checked = slow
+          })
+        
     }
 
     function load() {
