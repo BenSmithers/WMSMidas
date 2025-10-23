@@ -19,8 +19,8 @@ class HVBox(midas.frontend.EquipmentBase, CAENBox):
         default_common.equip_type = midas.EQ_PERIODIC
         default_common.buffer_name = "SYSTEM"
         default_common.trigger_mask = 0
-        default_common.event_id = 16
-        default_common.period_ms = 3000 # not really doing anything...
+        default_common.event_id = 13
+        default_common.period_ms = 2500 # not really doing anything...
         default_common.read_when = midas.RO_ALWAYS
         default_common.log_history = 60 #NOT SURE IF THIS MUST BE UNIQUE 
 
@@ -47,7 +47,7 @@ class HVBox(midas.frontend.EquipmentBase, CAENBox):
         self.client.odb_set("/Equipment/{}/Variables/voltage_read".format(self.equip_name), this_v, True)
         self.client.odb_set("/Equipment/{}/Variables/current_read".format(self.equip_name), this_i, True)
         self.client.odb_set("/Equipment/{}/Variables/status".format(self.equip_name), status_vector, True)
-    
+
     def detailed_settings_changed_func(self, path, idx, new_value):
         """
             0 - disabled / enabled
