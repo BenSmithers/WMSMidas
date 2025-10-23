@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from picosdk.functions import adc2mV, assert_pico_ok, PICO_STATUS_LOOKUP
 import time
 from scipy.signal import find_peaks
-from StageControl.picocode.utils import get_valid, get_cfd_time, count_hits
+from wms_midas.utilities.utils import get_valid, get_cfd_time, count_hits
 import json 
 from picosdk.PicoDeviceEnums import picoEnum
 

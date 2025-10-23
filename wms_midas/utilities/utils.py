@@ -20,6 +20,46 @@ chARange = 5
 nbuf = 10
 channelInputRanges = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000]
 
+def count_hits(hit_indices, signal, threshold,  is_monitor, chunk_length = 90, get_bad=False):
+    """
+        Stack the 90 samples following each trigger index into a 2D array
+        Average the last/first 10 bins to determine the pedestal here
+        Use pedestal to determine actual heights
+        Apply hit height and timing cuts
+        Count passing hits 
+    """
+    window = 6 # samples! 
+    if is_monitor:
+        if get_bad: # darkrate
+            min_time =  chunk_length-window-1 # last few bins
+        else:
+            min_time = 4 
+
+    else:
+        if get_bad: # darkrate
+            min_time = chunk_length-window-1
+        else:
+            min_time = 15
+    max_time = min_time + window
+
+    chunk_offsets = np.arange(chunk_length)
+    hit_indices = hit_indices[:-1]
+    chunk_indices = hit_indices[:, None] + chunk_offsets[None, :]
+    cut_waveforms = signal[chunk_indices]
+
+    if get_bad: # get the first ten bins of each waveform 
+        peds = np.mean(cut_waveforms[:, :10], axis=1)
+    else:       # get the last ten bins of each waveform 
+        peds = np.mean(cut_waveforms[:, -10:], axis=1)
+    amplitudes = - np.min(cut_waveforms, axis=1) + peds
+    
+    is_hit = amplitudes > threshold
+
+    crossing_samples = chunk_offsets[np.argmin(cut_waveforms, axis=1)]
+    time_cut = np.logical_and(crossing_samples >= min_time, crossing_samples <= max_time)    
+
+    return np.sum(np.logical_and(is_hit, time_cut))
+
 def get_cfd_time(times, signal, threshold, auto_adjust_ped = False, use_rise=False):
     if auto_adjust_ped:
         ped = np.mean( signal[np.abs(signal)<0.66*threshold] )
@@ -33,7 +73,7 @@ def get_cfd_time(times, signal, threshold, auto_adjust_ped = False, use_rise=Fal
     
     crossings = np.where(crossings)
     x0 = times[crossings[0]]
-    return x0, x0
+    return x0, crossings[0]
 
     y0 = signal[crossings[0]]
     y1 = signal[crossings[0]+1]
@@ -63,17 +103,20 @@ def get_rtime(trigs, hits):
 
 
 def get_valid(trigs, hits, is_rec, invalid=False):
+    #return np.logical_not(np.isnan(hits)),np.isnan(hits)
     window = 24
     if invalid:
-        shift = 150
+        if is_rec:
+            min_time = 300
+        else:
+            min_time = 300
     else:
-        shift = 0
-    if is_rec:
-        min_time = 104+shift
-        max_time = min_time+window
-    else:
-        min_time = 12+shift
-        max_time = min_time+window
+        if is_rec:
+            min_time = 54
+        else:
+            min_time = 16
+
+    max_time = min_time+window
 
     hit_trig_time = hits - trigs[np.digitize(hits, trigs)-1]
     good = np.logical_and( hit_trig_time>min_time, hit_trig_time<max_time)
