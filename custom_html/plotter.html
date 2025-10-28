@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Plotter</title>
+    <script src="midas.js"></script>
+    <script src="mhttpd.js"></script>
+    <script src="obsolete.js"></script>
+    <link href="midas.css" rel="stylesheet">
+    <link href="overrides.css" rel="stylesheet">
+
+<style>
+  .control-panel {
+    display: flex;
+    gap: 20px;
+    margin: 20px;
+    padding: 20px;
+    border: 2px solid #ddd;
+    border-radius: 12px;
+    background: #f9f9f9;
+    max-width: 800px;
+  }
+
+  .panel-section {
+    background: #fff;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  }
+
+  h3 {
+    margin-top: 0;
+    font-size: 1.1em;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+  }
+
+  .readout {
+    font-size: 1em;
+    margin: 8px 0;
+  }
+
+  .value {
+    font-weight: bold;
+    color: #333;
+  }
+
+  .status-item {
+    display: flex;
+    align-items: center;
+    margin: 8px 0;
+    font-size: 1em;
+  }
+
+  .status-circle {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    margin-left: 8px;
+    box-shadow: 0 0 3px rgba(0,0,0,0.2);
+    background: gray; /* default */
+  }
+  .green { background: #2ecc71; }
+  .red { background: #e74c3c; }
+
+  label {
+    display: block;
+    margin: 6px 0;
+    font-size: 0.95em;
+  }.data {
+    display: none;
+}
+.data.visible {
+    display: block;
+}
+#tabs {
+    margin: auto;
+    text-align: center;
+}
+#tabs .tab {
+    margin: .5em 0;
+    border-radius: 0;
+    border: 1px solid rgb(160,160,160);
+    background-color: white;
+    border-left: none;
+    font-size: 16px;
+    transition: .5s;
+    padding: .1em .4em;
+}
+#tabs .tab.selected {
+    background-color: rgb(208, 224, 224);   
+    transition: .5s;
+}
+#tabs .tab:hover {
+    background-color: #e1f2f2;
+}
+#tabs .tab:first-child {
+    border-left: 1px solid rgb(160,160,160);
+    border-radius: 5px 0 0 5px;
+}
+#tabs .tab:last-child {
+    border-radius: 0 5px 5px 0;
+}
+#tabs .tab:disabled {
+    background-color: rgb(221, 221, 221);
+    transition: .5s;
+}
+#tabs .tab.selected:disabled {
+    background-color: rgb(221, 221, 221);
+}
+
+.data table {
+    margin: auto;
+}
+.data td {
+    text-align: right;
+}
+
+
+  .img-wrap { margin-top:12px; }
+
+    
+</style>
+
+</head>
+
+<body class="mcss" onload="mhttpd_init('Plotter')">
+
+<div id="mheader"></div>
+<div id="msidenav"></div>
+<div id="mmain">
+    <div class="control-panel">
+        <input type="checkbox" id="rawbutton" checked=true>Show Relative </input>
+        <input type="number" id="maxval" value=0.1>Set Max </input>
+        <input type="number" id="minval" value=-0.1>Set Min </input>
+        <input type="number" id="timerange" value=1>Time Range [hrs] </input>
+    </div>
+    <div class="panel-section">
+        <img id="statusImage" src="example.png" alt="Current values" style="max-width:75%;border:1px solid #ccc;border-radius:6px"/> 
+    </div>
+</div>
+<script type="text/javascript">
+    var updateTimerId = 0;
+    var updatePeriod = 15000; // 10000; // in msec
+
+    
+
+    function update(){
+        clearTimeout(updateTimerId);
+        load()
+        console.log("loaded")
+        updateTimerId = setTimeout('update()', updatePeriod);
+
+        document.getElementById("statusImage").src = "example.png" +"?_ts" + Date.now();
+    }
+    function load(){
+
+    }
+    update()
+</script>
+
+</body>
+</html>

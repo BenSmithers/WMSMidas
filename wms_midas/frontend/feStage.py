@@ -16,8 +16,8 @@ class ELLxStageMidas(midas.frontend.EquipmentBase, ELLxConnection):
         default_common.equip_type = midas.EQ_PERIODIC
         default_common.buffer_name = "SYSTEM"
         default_common.trigger_mask = 0
-        default_common.event_id = 16
-        default_common.period_ms = 10000 # not really doing anything...
+        default_common.event_id = 12
+        default_common.period_ms = 5000 # not really doing anything...
         default_common.read_when = midas.RO_ALWAYS
         default_common.log_history = 60 #NOT SURE IF THIS MUST BE UNIQUE 
 
@@ -28,7 +28,6 @@ class ELLxStageMidas(midas.frontend.EquipmentBase, ELLxConnection):
         self.client = client 
 
         midas.frontend.EquipmentBase.__init__(self, client, equip_name, default_common)
-        print(self.settings["USB"])
         ELLxConnection.__init__(self, self.settings["USB"])
 
 

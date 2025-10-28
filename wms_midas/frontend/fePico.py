@@ -2,7 +2,7 @@ import midas.client
 import midas
 import midas.frontend
 import midas.event
-
+import time 
 import collections
 
 from pexpect import pxssh 
@@ -88,8 +88,10 @@ class PicoScope(midas.frontend.EquipmentBase):
         # self.client.odb_set("/Equipment/PicoScope/Variables/Measure", data, create_if_needed=True)
         # set new target and start waiting again 
         event = midas.event.Event()
-
+        event.create_bank("TIME", midas.TID_FLOAT, (time.time(),))
         event.create_bank("NCNT", midas.TID_INT, (trig, mon, rec, mond, recd))
+        led_enabled = self.client.odb_get("Equipment/LEDBoard/Variables/LED")
+        event.create_bank("LEDO", midas.TID_INT, (led_enabled,))
         return event 
     
         

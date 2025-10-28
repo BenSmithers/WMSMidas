@@ -25,6 +25,8 @@ These scripts are all super independent and generally are just used to communica
 - PumpConnection: 11 
 - ELLxStage: 12
 - HVController: 13 
+- Automator:17
+- Plotter:18
 
 
 # ODB Parameters
@@ -89,3 +91,9 @@ Script will adjust *settings* for the stage and the board
 
 Stages/LED frontends will see that those have changed
 Teh
+
+# To Do
+
+- finish and test automation 
+- add more of the alarms 
+- add plotting system
