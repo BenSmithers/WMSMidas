@@ -87,7 +87,7 @@ class Automator(midas.frontend.EquipmentBase):
         default_common.equip_type = midas.EQ_PERIODIC
         default_common.buffer_name = "SYSTEM"
         default_common.trigger_mask = 0
-        default_common.event_id = 11
+        default_common.event_id = 17
         default_common.period_ms = 2500 # every two seconds? 
         default_common.read_when = midas.RO_ALWAYS
         default_common.log_history = 60 #NOT SURE IF THIS MUST BE UNIQUE 
@@ -108,17 +108,34 @@ class Automator(midas.frontend.EquipmentBase):
         self.buffer_handle = self.client.open_event_buffer("SYSTEM")
         self.request_id = client.register_event_request(self.buffer_handle, event_id=10)
         self._running = False 
+        self._rotating_waves = False 
+        self._waiting_for_event = False 
+        self._refill_period = -1 
+        self._waiting_for_led_stage = False 
+        self._last_fill_time = -1 
+
+        self._rotation_indexer = -1 
+        self._rotation_steps = [1, 2, 3, 4, 5, 6, 7, -1]
+
         midas.frontend.EquipmentBase.__init__(self, client, equip_name, default_common, default_settings)
     
     def run_start(self, run_no):
         self._running = True
+        auto_refill = self.client.odb_get("/Equipment/Automator/Settings/auto_refill")
+        auto_circulate = self.client.odb_get("/Equipment/Automator/Settings/auto_refill")
+        self._rotating_waves = self.client.odb_get("/Equipment/Automator/Settings/rotate_waves")
+        self._refill_period = self.client.odb_get("/Equipment/Automator/Settings/refill_period")
+
+        # we need to pull automation 
+
     def run_end(self, run_no):
         self._running = False 
 
     def clear_state(self):
         self.client.msg("Exiting Automation")
-        self.client.odb_set("Equipment/Automator/Settings/state_major", 0, False)
-        self.client.odb_set("Equipment/Automator/Settings/state_minor", 0, False)
+        self._last_fill_time = time.time()
+        self.client.odb_set("/Equipment/Automator/Settings/state_major", 0, False)
+        self.client.odb_set("/Equipment/Automator/Settings/state_minor", 0, False)
         self.client.odb_set("/Equipment/Automator/Variables/counter", 0)
 
     def configure_state(self, pumps, ballvalves, solenoids):
@@ -151,20 +168,87 @@ class Automator(midas.frontend.EquipmentBase):
 
     def disable_all(self):
         # disable all pumps, solenoid valves, and ball valves 
-        self.client.odb_set("Equipment/Automator/Settings/state_minor", 0, False)
-        self.client.odb_set("Equipment/Automator/Settings/state_major", 0, False)
+        self.client.odb_set("/Equipment/Automator/Settings/state_minor", 0, False)
+        self.client.odb_set("/Equipment/Automator/Settings/state_major", 0, False)
 
         self.configure_state([0,0,0], [0,0,0,0,0,0], [0,0,0])
+
+    def step_wavelength(self):
+        self._waiting_for_led_stage = True 
+        self._rotation_indexer = (self._rotation_indexer + 1) % self._rotation_steps
+
+        which_led = self._rotation_steps[self._rotation_indexer]
+        if which_led == -1:
+            adc = 1023
+            led = 7
+        else:
+            led = which_led
+            # get ADC 
+            adc = self.client.odb_get("/Equipment/LEDBoard/Settings/adc_base[{}]".format(which_led - 1))
+        position = self.client.odb_get("/Equipment/ELLXStage/Settings/positions[{}]".format(led - 1))
+
+        self.client.odb_set("/Equipment/ELLXStage/Settings/dest", position)
+        self.client.odb_set("/Equipment/LEDBoard/Settings/ADC", adc)
+        self.client.odb_set("/Equipment/LEDBoard/Settings/LED", led)
 
     def readout_func(self):
         """
             Progress the automator 
         """
+        evt_return = None 
+        if self._waiting_for_event and self._running:
+            event = self.client.receive_event(self.buffer_handle, async_flag=True)
+            if event is None:
+                pass 
+            else:
+                self._waiting_for_event = False  # no longer waiting! 
 
-        event = self.client.receive_event(self.buffer_handle, async_flag=True)
-        if event is not None:
-            # an event was received... we should step the LED board/stage forwards if we're doing that 
-            pass 
+
+        """
+            This function gets regularly called. It manages requesting picoscope events from the Picoscope frontend
+            It also manages reconfiguring the LED board and ELLX stage
+
+            So, if this is waiting for an event from the picoscope, it will only do the pump stuff
+
+            If we're _not_ waiting for an event, then we have tasks to do until we can _request_ an event from the Picoscope frontend  
+            These depend on the configuration of the run
+
+            If we're NOT rotating between LEDs - we immediately request another event from the picoscope 
+
+            Otherwise, we check if we're waiting on the LED/Stage
+                if we are waiting on them, we check the values and settings. If they match, great! All good. Then we request an event
+
+                if we aren't waiting on them (yet!), we step to the next LED and start waiting 
+        """
+        # we're not longer waiting for an event, so we're ready to go
+        if (not self._waiting_for_event) and self._running:
+            if self._rotating_waves:
+                if self._waiting_for_led_stage:
+                    # just check if the LED board and stage are ready 
+                    adc_value = self.client.odb_get("/Equiptment/LEDBoard/Variables/ADC") 
+                    adc_target = self.client.odb_get("/Equiptment/LEDBoard/Settings/ADC") 
+
+                    pos_value = self.client.odb_get("/Equiptment/ELLXStage/Variables/dest")
+                    pos_target = self.client.odb_get("/Equiptment/ELLXStage/Variables/dest")
+
+                    led_value = self.client.odb_get("/Equiptment/LEDBoard/Variables/LED")
+                    led_target = self.client.odb_get("/Equiptment/LEDBoard/Settings/LED")
+                    
+                    ready = (adc_value == adc_target) and (led_value==led_target) and (abs(pos_target - pos_value)<0.1)
+                    if ready:
+                        self._waiting_for_led_stage = False 
+                        evt_return = midas.event.Event()
+                        evt_return.create_bank("REQE", midas.TID_BOOL, (True, ))
+                        self._waiting_for_event = True 
+                else:
+                    # move led board and stage to the next logical position
+                    self.step_wavelength()
+            else:
+                evt_return = midas.event.Event()
+                evt_return.create_bank("REQE", midas.TID_BOOL, (True, ))
+                self._waiting_for_event = True 
+
+            
 
         major_state = self.settings["state_major"]
         minor_state = self.settings["state_minor"]
@@ -348,7 +432,7 @@ class Automator(midas.frontend.EquipmentBase):
             self.clear_state()
 
 
-        
+        return evt_return
 
 
 class feAutomation(midas.frontend.FrontendBase):

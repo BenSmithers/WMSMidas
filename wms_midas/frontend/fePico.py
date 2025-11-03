@@ -40,51 +40,36 @@ class PicoScope(midas.frontend.EquipmentBase):
 
         midas.frontend.EquipmentBase.__init__(self, client, equip_name, default_common, default_settings)
 
-        self._waiting = False 
-        self._adc_updated = False 
-        self._led_updated = False 
-        self._stage_updated = False
-        self._rotating = False 
+        self.buffer_handle = client.open_event_buffer("SYSTEM") 
+        self.request_id = client.register_event_request(buffer_handle=self.buffer_handle, event_id=17) # monitor automation events
+
+        self._event_requested = False 
 
         self._picoscope = PicoMeasure(True)
-        self._picoscope.collection_time = 30 
+        self._picoscope.collection_time = 10
 
         self.readout_func()
 
-    def start_run(self):
-        pass 
-
-    def adc_updated(self):
-        pass 
-    def led_updated(self):
-        pass 
-    def stage_updated(self):
-        pass 
     
     def poll_func(self):
         """
             Check if we're ready to make a measurement 
         """
-        if self._rotating:
-            return self._adc_updated and self._led_updated and self._stage_updated 
+        event = self.client.receive_event(self.buffer_handle, async_flag=True)
+        if event is None:
+            return False 
         else:
-            return True 
+            for bank in event.banks.values:
+                if "REQE" == bank.name:
+                    return True 
+        
+
+
 
     def readout_func(self):
-        self._waiting = True 
-        self._adc_updated = False 
-        self._led_updated = False 
-        self._stage_updated = False
-
+        self._event_requested = False 
         # make measurement... 
         trig, mon, rec, mond, recd = self._picoscope.measure()
-        data = {
-            "TRIG":trig, 
-            "MONC":mon,
-            "RECC":rec,
-            "MOND":mond, 
-            "RECD":recd 
-        }
         # self.client.odb_set("/Equipment/PicoScope/Variables/Measure", data, create_if_needed=True)
         # set new target and start waiting again 
         event = midas.event.Event()
@@ -92,6 +77,7 @@ class PicoScope(midas.frontend.EquipmentBase):
         event.create_bank("NCNT", midas.TID_INT, (trig, mon, rec, mond, recd))
         led_enabled = self.client.odb_get("Equipment/LEDBoard/Variables/LED")
         event.create_bank("LEDO", midas.TID_INT, (led_enabled,))
+        
         return event 
     
         
