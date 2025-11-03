@@ -174,149 +174,149 @@
 <div id="msidenav"></div>
 <div id="mmain">
 
-    <div class="control-panel">
-        <div class="panel-section">
-            <h3 class="mtableheader">LED + Stage <input type="button" value="Disable LED" onclick="disable_led()"></input></h3>
-            <div class="sub-panel">
-                <input type="button" value="Apply" onclick="apply_wavelength()"></input>
-                <select id="wavelength_select">
-                    <option value="1">450 nm</option>
-                    <option value="2">405 nm</option>
-                    <option value="3">365 nm</option>
-                    <option value="4">295 nm</option>
-                    <option value="5">278 nm</option>
-                    <option value="6">255 nm</option>
-                    <option value="7">235 nm</option>
-                    <option value="8">Align 1</option>
-                    <option value="9">Align 2</option>
-                </select>
-            </div>
-            <div class="sub-panel">
-                <input type="button" value="Move To:" onclick="apply_position()"></input>
-                <input type="number" min=0 max=60 value=10.00 step="0.01" id="position"></input>
-            </div>
-            <div class="sub-panel">
-              <label>Position: </label>
-              <label id="pos_lbl">20.0mm</label>
-            </div>
-            <div class="sub-panel">
-                <input type="button" value="Apply ADC" onclick="apply_adc()"></input>
-                <input type="number" min=0 max=1023 value=800 step="1" id='adc_value'></input>
-            </div>
-            <div class="sub-panel">
-                <input type="button" value="Set Rate" onclick="apply_rate()"></input>
-                <select id='rate_select'>
-                    <option value=0>1.5 kHz</option>
-                    <option value=1>2.7 MHz</option>
-                    
-                </select>
-            </div>
-        </div>
-        <div class="panel">
-            <h3 class="mtableheader"> Run Control </h3>
-                <label><input type="checkbox" onclick="rotate_toggle(this)" id='rotate_check'>Rotate Wavelengths </label>
-                <label><input type="checkbox" onclick="refill_toggle(this)" id='refill_check'>Auto Refill </label>
-                <label><input type="checkbox" onclick="circulate_toggle(this)" id='circulate_check'> Circulate Water </label>
-                <label><input type="number" value=90 min=30 max=240 id='refill_period' onchange="refill_change(this)"> Refill Period [min] </label>
-        </div>
+  <div class="control-panel">
+      <div class="panel-section">
+          <h3 class="mtableheader">LED + Stage <input type="button" value="Disable LED" onclick="disable_led()"></input></h3>
+          <div class="sub-panel">
+              <input type="button" value="Apply" onclick="apply_wavelength()"></input>
+              <select id="wavelength_select" onchange="wavelength_changed()">
+                  <option value="1">450 nm</option>
+                  <option value="2">405 nm</option>
+                  <option value="3">365 nm</option>
+                  <option value="4">295 nm</option>
+                  <option value="5">278 nm</option>
+                  <option value="6">255 nm</option>
+                  <option value="7">235 nm</option>
+                  <option value="8">Align 1</option>
+                  <option value="9">Align 2</option>
+              </select>
+          </div>
+          <div class="sub-panel">
+              <input type="button" value="Move To:" onclick="apply_position()"></input>
+              <input type="number" min=0 max=60 value=10.00 step="0.01" id="position"></input>
+          </div>
+          <div class="sub-panel">
+            <label>Position: </label>
+            <label id="pos_lbl">20.0mm</label>
+          </div>
+          <div class="sub-panel">
+              <input type="button" value="Apply ADC" onclick="apply_adc()"></input>
+              <input type="number" min=0 max=1023 value=800 step="1" id='adc_value'></input>
+          </div>
+          <div class="sub-panel">
+              <input type="button" value="Set Rate" onclick="apply_rate()"></input>
+              <select id='rate_select'>
+                  <option value=0>1.5 kHz</option>
+                  <option value=1>2.7 MHz</option>
+                  
+              </select>
+          </div>
+      </div>
+      <div class="panel">
+          <h3 class="mtableheader"> Run Control </h3>
+              <label><input type="checkbox" onclick="rotate_toggle(this)" id='rotate_check'>Rotate Wavelengths </label>
+              <label><input type="checkbox" onclick="refill_toggle(this)" id='refill_check'>Auto Refill </label>
+              <label><input type="checkbox" onclick="circulate_toggle(this)" id='circulate_check'> Circulate Water </label>
+              <label><input type="number" value=90 min=30 max=240 id='refill_period' onchange="refill_change(this)"> Refill Period [min] </label>
+      </div>
 
-        <div class="panel">
-            <h3 class="mtableheader"> Automation </h3>
-                <input type="button" value="Drain Chamber">
-                <input type="button" value="Fill With Tank">
-                <div class="flat-panel">
-                  <input type="checkbox" id="filter" onclick="filter_toggle(this)">Filters</input>
-                  <input type="checkbox" id="uv_sterile" onclick="uv_toggle(this)">UV Sterile</input>
-                  <input type="checkbox" id="deionize" onclick="deion_toggle(this)">De-Ion</input>
-                </div>
-                <input type="button" value="Fill With RO">
-                <input type="button" value="STOP">
-        </div>
-    </div>
-
-
-    <div class="control-panel">
-
-
-
-  <!-- Numeric Values -->
-    <div class="panel-section" >
-    <h3>Pressure</h3>
-
-
-    <p id="inputpres"> Input Pressure: </p>
-    <p id="prefilter"> Input Pressure: </p>
-    <p id="postfilter"> Input Pressure: </p>
-    <p id="osmosis"> Input Pressure: </p>
-
-    <h3>Temperature</h3>
-        
-    <p id="sterilizer"> Sterilizer: </p>
-    <p id="tube1"> Input Pressure: </p>
-    <p id="tube2"> Input Pressure: </p>
-
-    <h3>Light Level</h3>
-    <p id="monitorl"> Sterilizer: </p>
-    <p id="receiverl"> Input Pressure: </p>
-
-
+      <div class="panel">
+          <h3 class="mtableheader"> Automation </h3>
+              <input type="button" value="Drain Chamber">
+              <input type="button" value="Fill With Tank">
+              <div class="flat-panel">
+                <input type="checkbox" id="filter" onclick="filter_toggle(this)">Filters</input>
+                <input type="checkbox" id="uv_sterile" onclick="uv_toggle(this)">UV Sterile</input>
+                <input type="checkbox" id="deionize" onclick="deion_toggle(this)">De-Ion</input>
+              </div>
+              <input type="button" value="Fill With RO">
+              <input type="button" value="STOP">
+      </div>
   </div>
 
-  <!-- Boolean Status -->
-  <div class="panel-section">
-    
-    <h3>Flow Status</h3>
-    <div class="status-item" id="flow0">
-      Input Flow <span class="status-circle red"></span>
-    </div>
-    <div class="status-item" id="flow1">
-      Input Flow <span class="status-circle red"></span>
-    </div>
-    <div class="status-item" id="flow2">
-      Input Flow <span class="status-circle red"></span>
-    </div>
-    <div class="status-item" id="flow3">
-      Input Flow <span class="status-circle red"></span>
-    </div>
-    <div class="status-item" id="flow4">
-      Input Flow <span class="status-circle red"></span>
-    </div>
 
-    <h3>Water Level Indicators</h3>
-    <div class="status-item" id="water0">
-      Input Flow <span class="status-circle red"></span>
-    </div>
-    <div class="status-item" id="water1">
-      Input Flow <span class="status-circle red"></span>
-    </div>
-    <div class="status-item" id="water2">
-      Input Flow <span class="status-circle red"></span>
-    </div>
+  <div class="control-panel">
 
-  </div>
 
+
+<!-- Numeric Values -->
+  <div class="panel-section" >
+  <h3>Pressure</h3>
+
+
+  <p id="inputpres"> Input Pressure: </p>
+  <p id="prefilter"> Input Pressure: </p>
+  <p id="postfilter"> Input Pressure: </p>
+  <p id="osmosis"> Input Pressure: </p>
+
+  <h3>Temperature</h3>
+      
+  <p id="sterilizer"> Sterilizer: </p>
+  <p id="tube1"> Input Pressure: </p>
+  <p id="tube2"> Input Pressure: </p>
+
+  <h3>Light Level</h3>
+  <p id="monitorl"> Sterilizer: </p>
+  <p id="receiverl"> Input Pressure: </p>
+
+
+</div>
+
+<!-- Boolean Status -->
+<div class="panel-section">
   
-  <!-- Controls -->
-  <div class="panel-section">
-    <h3>Pump Control</h3>
-    <label><input type="checkbox" id="pump1" onclick='clickHandler(this,0, 0);'> Input Pump</label>
-    <label><input type="checkbox" id="pump2" onclick='clickHandler(this,0, 1);'> Drain Pump</label>
-    <label><input type="checkbox" id="pump3" onclick='clickHandler(this,0, 2);'> Return Pump</label>
-
-    <h3>Solenoid Valves</h3>
-    <label><input type="checkbox" id="sv1" onclick='clickHandler(this,1, 0);'> Input</label>
-    <label><input type="checkbox" id="sv2"onclick='clickHandler(this,1, 1);'> Pre-Chamber</label>
-    <label><input type="checkbox" id="sv3"onclick='clickHandler(this,1, 2);'> Degasser</label>
-
-    <h3>Ball Valves</h3>
-    <label><input type="checkbox" id="bv1" onclick='clickHandler(this,2, 0);'> Input Swap</label>
-    <label><input type="checkbox" id="bv2" onclick='clickHandler(this,2, 1);'> Filters</label>
-    <label><input type="checkbox" id="bv3" onclick='clickHandler(this,2, 2);'> UV Sterilizer</label>
-    <label><input type="checkbox" id="bv4" onclick='clickHandler(this,2, 3);'> De-Ionizer</label>
-    <label><input type="checkbox" id="bv5" onclick='clickHandler(this,2, 4);'> Osmosis</label>
-    <label><input type="checkbox" id="bv6" onclick='clickHandler(this,2, 5);'> Chamber</label>
-
+  <h3>Flow Status</h3>
+  <div class="status-item" id="flow0">
+    Input Flow <span class="status-circle red"></span>
   </div>
+  <div class="status-item" id="flow1">
+    Input Flow <span class="status-circle red"></span>
+  </div>
+  <div class="status-item" id="flow2">
+    Input Flow <span class="status-circle red"></span>
+  </div>
+  <div class="status-item" id="flow3">
+    Input Flow <span class="status-circle red"></span>
+  </div>
+  <div class="status-item" id="flow4">
+    Input Flow <span class="status-circle red"></span>
+  </div>
+
+  <h3>Water Level Indicators</h3>
+  <div class="status-item" id="water0">
+    Input Flow <span class="status-circle red"></span>
+  </div>
+  <div class="status-item" id="water1">
+    Input Flow <span class="status-circle red"></span>
+  </div>
+  <div class="status-item" id="water2">
+    Input Flow <span class="status-circle red"></span>
+  </div>
+
+</div>
+
+
+<!-- Controls -->
+<div class="panel-section">
+  <h3>Pump Control</h3>
+  <label><input type="checkbox" id="pump1" onclick='clickHandler(this,0, 0);'> Input Pump</label>
+  <label><input type="checkbox" id="pump2" onclick='clickHandler(this,0, 1);'> Drain Pump</label>
+  <label><input type="checkbox" id="pump3" onclick='clickHandler(this,0, 2);'> Return Pump</label>
+
+  <h3>Solenoid Valves</h3>
+  <label><input type="checkbox" id="sv1" onclick='clickHandler(this,1, 0);'> Input</label>
+  <label><input type="checkbox" id="sv2"onclick='clickHandler(this,1, 1);'> Pre-Chamber</label>
+  <label><input type="checkbox" id="sv3"onclick='clickHandler(this,1, 2);'> Degasser</label>
+
+  <h3>Ball Valves</h3>
+  <label><input type="checkbox" id="bv1" onclick='clickHandler(this,2, 0);'> Input Swap</label>
+  <label><input type="checkbox" id="bv2" onclick='clickHandler(this,2, 1);'> Filters</label>
+  <label><input type="checkbox" id="bv3" onclick='clickHandler(this,2, 2);'> UV Sterilizer</label>
+  <label><input type="checkbox" id="bv4" onclick='clickHandler(this,2, 3);'> De-Ionizer</label>
+  <label><input type="checkbox" id="bv5" onclick='clickHandler(this,2, 4);'> Osmosis</label>
+  <label><input type="checkbox" id="bv6" onclick='clickHandler(this,2, 5);'> Chamber</label>
+
+</div>
 
 
 <script type="text/javascript">
@@ -329,11 +329,32 @@
       ODBSet("/Equipment/LEDBoard/Settings/Enabled", 0)
     }
 
+    function wavelength_changed(){
+      var element = document.getElementById('wavelength_select').value
+
+      var index = element - 1
+      
+      mjsonrpc_db_get_values(["/Equipment/LEDBoard/Settings/adc_base"]).then(function (rpc) {
+        var status = rpc.result.status;
+        var slow = rpc.result.data[0][index];
+        document.getElementById("adc_value").value = slow
+      }) 
+      mjsonrpc_db_get_values(["/Equipment/ELLXStage/Settings/positions"]).then(function (rpc) {
+        console.log(index)
+        var status = rpc.result.status;
+        var slow = rpc.result.data[0][index];
+        document.getElementById("position").value = slow
+      }) 
+    }
+
     function apply_wavelength(dd){
       // will do a lot 
       var element = document.getElementById('wavelength_select').value
+
+      var index = element - 1
+      console.log(index)
+
       ODBSet("/Equipment/LEDBoard/Settings/LED",element)
-    
     }
 
     function apply_position(){
@@ -440,6 +461,25 @@
             document.getElementById("adc_value").value = slow
 
         })
+      
+      mjsonrpc_db_get_values(["/Equipment/LEDBoard/Settings/LED"]).then(function (rpc) {
+          
+          var status = rpc.result.status;
+          var slow = rpc.result.data[0];
+          
+          document.getElementById("wavelength_select").value = slow
+      })
+      // apply rate select 
+      mjsonrpc_db_get_values(["/Equipment/LEDBoard/Settings/rate"]).then(function (rpc) {
+          
+          var status = rpc.result.status;
+          var slow = rpc.result.data[0]; // yes or no
+          if(slow){
+            document.getElementById("rate_select").value = 1
+          }else{
+            document.getElementById("rate_select").value = 0
+          }
+      })
     
 
       mjsonrpc_db_get_values(["Equipment/Automator/Settings/rotate_waves"]).then(function (rpc) {
@@ -581,6 +621,7 @@
     function update(){
         clearTimeout(updateTimerId);
         load()
+        console.log("loaded")
         updateTimerId = setTimeout('update()', updatePeriod);
         
     }
