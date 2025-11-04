@@ -532,6 +532,42 @@
 
     function load() {
 
+        mjsonrpc_db_get_values(["/Equipment/ELLXStage/Settings/dest"]).then(function (rpc) {
+            
+            var status = rpc.result.status;
+            var slow = rpc.result.data[0];
+            
+            document.getElementById("position").value = slow
+
+        })
+      mjsonrpc_db_get_values(["/Equipment/LEDBoard/Settings/ADC"]).then(function (rpc) {
+            
+            var status = rpc.result.status;
+            var slow = rpc.result.data[0];
+            
+            document.getElementById("adc_value").value = slow
+
+        })
+      
+      mjsonrpc_db_get_values(["/Equipment/LEDBoard/Settings/LED"]).then(function (rpc) {
+          
+          var status = rpc.result.status;
+          var slow = rpc.result.data[0];
+          
+          document.getElementById("wavelength_select").value = slow
+      })
+      // apply rate select 
+      mjsonrpc_db_get_values(["/Equipment/LEDBoard/Settings/rate"]).then(function (rpc) {
+          
+          var status = rpc.result.status;
+          var slow = rpc.result.data[0]; // yes or no
+          if(slow){
+            document.getElementById("rate_select").value = 1
+          }else{
+            document.getElementById("rate_select").value = 0
+          }
+      })
+
         mjsonrpc_db_get_values(["/Equipment/ELLXStage/Variables/dest"]).then(function (rpc) {
             
             var status = rpc.result.status;
