@@ -21,7 +21,7 @@ These scripts are all super independent and generally are just used to communica
 ### Equipment IDs
 
 - LEDMidas: 16
-- PicoScope: 10 
+- PicoScope: 19
 - PumpConnection: 11 
 - ELLxStage: 12
 - HVController: 13 

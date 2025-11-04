@@ -5,9 +5,6 @@ import midas.event
 import time 
 import collections
 
-from pexpect import pxssh 
-import numpy as np 
-
 from wms_midas.utilities import PicoMeasure
 
 class PicoScope(midas.frontend.EquipmentBase):
@@ -25,48 +22,33 @@ class PicoScope(midas.frontend.EquipmentBase):
         default_common.equip_type = midas.EQ_POLLED
         default_common.buffer_name = "SYSTEM"
         default_common.trigger_mask = 0
-        default_common.event_id = 10
-        default_common.period_ms = 500 # every half second? 
-
-        # change to RO_RUNNING 
+        default_common.event_id = 19
+        default_common.period_ms = 2500 # every two seconds? 
         default_common.read_when = midas.RO_ALWAYS
         default_common.log_history = 60 #NOT SURE IF THIS MUST BE UNIQUE 
-
-        default_settings = collections.OrderedDict([  
-            ("dev",devName),
-
-        ]) 
-        self.client = client 
-
-        midas.frontend.EquipmentBase.__init__(self, client, equip_name, default_common, default_settings)
-
-        self.buffer_handle = client.open_event_buffer("SYSTEM") 
-        self.request_id = client.register_event_request(buffer_handle=self.buffer_handle, event_id=17) # monitor automation events
 
         self._event_requested = False 
 
         self._picoscope = PicoMeasure(True)
         self._picoscope.collection_time = 10
-
-        self.readout_func()
-
-    
-    def poll_func(self):
-        """
-            Check if we're ready to make a measurement 
-        """
-        event = self.client.receive_event(self.buffer_handle, async_flag=True)
-        if event is None:
-            return False 
-        else:
-            for bank in event.banks.values:
-                if "REQE" == bank.name:
-                    return True 
         
+        self.client = client 
 
+        midas.frontend.EquipmentBase.__init__(self, client, equip_name, default_common)
+        self._buffer_handle = None 
 
-
-    def readout_func(self):
+    def set_buffer(self, buffer_handle):
+        self._buffer_handle = buffer_handle
+        
+    def poll_func(self):
+        event = self.client.receive_event(self._buffer_handle, async_flag=True)
+        if event is not None:
+            for bank in event.banks.values():
+                if "REQE" == bank.name:        
+                    return True 
+        return False 
+    
+    def readout_func(self):        
         self._event_requested = False 
         # make measurement... 
         trig, mon, rec, mond, recd = self._picoscope.measure()
@@ -79,20 +61,25 @@ class PicoScope(midas.frontend.EquipmentBase):
         event.create_bank("LEDO", midas.TID_INT, (led_enabled,))
         
         return event 
-    
+                
         
         
 
 class fePicoScope(midas.frontend.FrontendBase):
     def __init__(self, picoscope:PicoScope):
         midas.frontend.FrontendBase.__init__(self, "fePicoScope")
+        self.buffer_handle = self.client.open_event_buffer("SYSTEM") 
+        self.request_id = self.client.register_event_request(buffer_handle=self.buffer_handle, event_id=17) # monitor automation events
+
         self.pico = picoscope(self.client)
+        self.pico.set_buffer(self.buffer_handle)
         self.add_equipment(self.pico)
 
         # these can be changed by the user 
         #self.client.odb_watch("/Equipment/ELLxStage/Variables/destination",self.check_readout)
         #self.client.odb_watch("/Equipment/LEDBoard/Variables/adc",self.check_readout)
         #self.client.odb_watch("/Equipment/LEDBoard/Variables/LED",self.check_readout)        
+
 
     def begin_of_run(self, run_number):
         self.set_all_equipment_status("Running", "greenLight")

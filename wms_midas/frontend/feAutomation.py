@@ -95,18 +95,7 @@ class Automator(midas.frontend.EquipmentBase):
         self._drain_ticks = 5
         self._overflow_ticks = 5
 
-        
-
-        default_settings = collections.OrderedDict([  
-            ("dev",devName),
-            ("state_major", 0),
-            ("state_minor", 0)
-        ]) 
-
         self.client = client 
-
-        self.buffer_handle = self.client.open_event_buffer("SYSTEM")
-        self.request_id = client.register_event_request(self.buffer_handle, event_id=10)
         self._running = False 
         self._rotating_waves = False 
         self._waiting_for_event = False 
@@ -116,13 +105,19 @@ class Automator(midas.frontend.EquipmentBase):
 
         self._rotation_indexer = -1 
         self._rotation_steps = [1, 2, 3, 4, 5, 6, 7, -1]
+        self._rotation_steps = [2, 3, 4, 5, -1]
 
-        midas.frontend.EquipmentBase.__init__(self, client, equip_name, default_common, default_settings)
-    
+        midas.frontend.EquipmentBase.__init__(self, client, equip_name, default_common)
+
+        self.buffer_handle = self.client.open_event_buffer("SYSTEM")
+        self.request_id = client.register_event_request(self.buffer_handle, event_id=19)
+
     def run_start(self, run_no):
         self._running = True
+        self._waiting_for_event = False
+        self._rotation_indexer = -1 
         auto_refill = self.client.odb_get("/Equipment/Automator/Settings/auto_refill")
-        auto_circulate = self.client.odb_get("/Equipment/Automator/Settings/auto_refill")
+        auto_circulate = self.client.odb_get("/Equipment/Automator/Settings/auto_circulate")
         self._rotating_waves = self.client.odb_get("/Equipment/Automator/Settings/rotate_waves")
         self._refill_period = self.client.odb_get("/Equipment/Automator/Settings/refill_period")
 
@@ -130,6 +125,7 @@ class Automator(midas.frontend.EquipmentBase):
 
     def run_end(self, run_no):
         self._running = False 
+        self._waiting_for_event = False
 
     def clear_state(self):
         self.client.msg("Exiting Automation")
@@ -175,7 +171,7 @@ class Automator(midas.frontend.EquipmentBase):
 
     def step_wavelength(self):
         self._waiting_for_led_stage = True 
-        self._rotation_indexer = (self._rotation_indexer + 1) % self._rotation_steps
+        self._rotation_indexer = (self._rotation_indexer + 1) % len(self._rotation_steps)
 
         which_led = self._rotation_steps[self._rotation_indexer]
         if which_led == -1:
@@ -225,14 +221,14 @@ class Automator(midas.frontend.EquipmentBase):
             if self._rotating_waves:
                 if self._waiting_for_led_stage:
                     # just check if the LED board and stage are ready 
-                    adc_value = self.client.odb_get("/Equiptment/LEDBoard/Variables/ADC") 
-                    adc_target = self.client.odb_get("/Equiptment/LEDBoard/Settings/ADC") 
+                    adc_value = self.client.odb_get("/Equipment/LEDBoard/Variables/ADC") 
+                    adc_target = self.client.odb_get("/Equipment/LEDBoard/Settings/ADC") 
 
-                    pos_value = self.client.odb_get("/Equiptment/ELLXStage/Variables/dest")
-                    pos_target = self.client.odb_get("/Equiptment/ELLXStage/Variables/dest")
+                    pos_value = self.client.odb_get("/Equipment/ELLXStage/Variables/dest")
+                    pos_target = self.client.odb_get("/Equipment/ELLXStage/Variables/dest")
 
-                    led_value = self.client.odb_get("/Equiptment/LEDBoard/Variables/LED")
-                    led_target = self.client.odb_get("/Equiptment/LEDBoard/Settings/LED")
+                    led_value = self.client.odb_get("/Equipment/LEDBoard/Variables/LED")
+                    led_target = self.client.odb_get("/Equipment/LEDBoard/Settings/LED")
                     
                     ready = (adc_value == adc_target) and (led_value==led_target) and (abs(pos_target - pos_value)<0.1)
                     if ready:
@@ -261,7 +257,7 @@ class Automator(midas.frontend.EquipmentBase):
             """
             Do some simple checks against danger
             """
-            return 
+            return evt_return
         
         elif is_draining: # we are draining 
             drain_pump = self.client.odb_get("/Equipment/PumpConnection/Settings/Pump[1]")
@@ -337,12 +333,13 @@ class Automator(midas.frontend.EquipmentBase):
                     if overflow:
                         self.client.odb_set("/Equipment/Automator/Variables/counter",counter_value+1)
                         if counter_value>5:
-                            event = midas.event.Event()
-                            event.create_bank(
+                            if evt_return is None:
+                                evt_return = midas.event.Event()
+                            evt_return.create_bank(
                                 "TUBE", midas.TID_FLOAT, time.time()
                             )
                             self.client.odb_set("Equipment/Automator/Settings/state_minor", minor_state + 2, False)
-                            return event 
+                            return evt_return 
                     else:
                         self.client.odb_set("/Equipment/Automator/Variables/counter",0) 
                     if (p4>22 or ((time.time()-osmo_last_time)/60)>1): # fill chamber 
@@ -355,12 +352,13 @@ class Automator(midas.frontend.EquipmentBase):
                     if overflow:
                         self.client.odb_set("/Equipment/Automator/Variables/counter",counter_value+1)
                         if counter_value>5:
-                            event = midas.event.Event()
-                            event.create_bank(
+                            if evt_return is None:
+                                evt_return = midas.event.Event()
+                            evt_return.create_bank(
                                 "TUBE", midas.TID_FLOAT, time.time()
                             )
                             self.client.odb_set("Equipment/Automator/Settings/state_minor", minor_state + 1, False)
-                            return event 
+                            return evt_return 
                     else:
                         self.client.odb_set("/Equipment/Automator/Variables/counter",0) 
                     self.configure_state([0,0,0], [0,0,0,0,1,1], [1,0,1])
@@ -430,7 +428,6 @@ class Automator(midas.frontend.EquipmentBase):
         else:
             self.client.msg("Unrecognized states: {} and {}".format(major_state, minor_state), True)
             self.clear_state()
-
 
         return evt_return
 
