@@ -178,7 +178,7 @@
       <div class="panel-section">
           <h3 class="mtableheader">LED + Stage <input type="button" value="Disable LED" onclick="disable_led()"></input></h3>
           <div class="sub-panel">
-              <input type="button" value="Apply" onclick="apply_wavelength()"></input>
+              <input type="button" id="apply_button" value="Apply" onclick="apply_wavelength()"></input>
               <select id="wavelength_select" onchange="wavelength_changed()">
                   <option value="1">450 nm</option>
                   <option value="2">405 nm</option>
@@ -192,19 +192,19 @@
               </select>
           </div>
           <div class="sub-panel">
-              <input type="button" value="Move To:" onclick="apply_position()"></input>
-              <input type="number" min=0 max=60 value=10.00 step="0.01" id="position"></input>
+              <input type="button" id="move_button" value="Move To:" onclick="apply_position()"></input>
+              <input type="number" id="pos_in" min=0 max=60 value=10.00 step="0.01" id="position"></input>
           </div>
           <div class="sub-panel">
             <label>Position: </label>
             <label id="pos_lbl">20.0mm</label>
           </div>
           <div class="sub-panel">
-              <input type="button" value="Apply ADC" onclick="apply_adc()"></input>
-              <input type="number" min=0 max=1023 value=800 step="1" id='adc_value'></input>
+              <input type="button" id="adc_button" value="Apply ADC" onclick="apply_adc()"></input>
+              <input type="number" id="adc_input" min=0 max=1023 value=800 step="1" id='adc_value'></input>
           </div>
           <div class="sub-panel">
-              <input type="button" value="Set Rate" onclick="apply_rate()"></input>
+              <input type="button" id="rate_button" value="Set Rate" onclick="apply_rate()"></input>
               <select id='rate_select'>
                   <option value=0>1.5 kHz</option>
                   <option value=1>2.7 MHz</option>
@@ -222,15 +222,15 @@
 
       <div class="panel">
           <h3 class="mtableheader"> Automation </h3>
-              <input type="button" value="Drain Chamber">
-              <input type="button" value="Fill With Tank">
+              <input type="button" id="drain_button" value="Drain Chamber" onclick="auto_drain()">
+              <input type="button" id="fill_button" value="Fill With Tank" onclick="auto_fill()">
               <div class="flat-panel">
                 <input type="checkbox" id="filter" onclick="filter_toggle(this)">Filters</input>
                 <input type="checkbox" id="uv_sterile" onclick="uv_toggle(this)">UV Sterile</input>
                 <input type="checkbox" id="deionize" onclick="deion_toggle(this)">De-Ion</input>
               </div>
-              <input type="button" value="Fill With RO">
-              <input type="button" value="STOP">
+              <input type="button" id='ro_button' value="Fill With RO" onclick="auto_ro()">
+              <input type="button" id='stop_button' value="STOP" onclick="stop_button()" disabled=true>
       </div>
   </div>
 
@@ -324,6 +324,77 @@
     var updateTimerId = 0;
     var updatePeriod = 2500; // 10000; // in msec
 
+    function lock_ui(){
+      document.getElementById("stop_button").disabled = false;
+      document.getElementById("fill_button").disabled = true;
+      document.getElementById("drain_button").disabled = true;
+      document.getElementById("ro_button").disabled = true;
+
+      document.getElementById("move_button").disabled = true
+      document.getElementById("apply_button").disabled = true
+      document.getElementById("pos_in").disabled = true
+      document.getElementById("adc_button").disabled = true
+      document.getElementById("adc_input").disabled = true
+      document.getElementById("rate_button").disabled = true
+      document.getElementById("rate_select").disabled = true
+      document.getElementById("wavelength_select").disabled = true
+
+      document.getElementById("rotate_check").disabled = true
+      document.getElementById("refill_check").disabled = true
+      document.getElementById("circulate_check").disabled = true
+      document.getElementById("refill_period").disabled = true
+
+      document.getElementById("pump1").disabled = true
+      document.getElementById("pump2").disabled = true
+      document.getElementById("pump3").disabled = true
+
+      document.getElementById("sv1").disabled = true
+      document.getElementById("sv2").disabled = true
+      document.getElementById("sv3").disabled = true
+
+      document.getElementById("bv1").disabled = true
+      document.getElementById("bv2").disabled = true
+      document.getElementById("bv3").disabled = true
+      document.getElementById("bv4").disabled = true
+      document.getElementById("bv5").disabled = true
+      document.getElementById("bv6").disabled = true
+    }
+
+    function unlock_ui(){
+      document.getElementById("fill_button").disabled = false;
+      document.getElementById("drain_button").disabled = false;
+      document.getElementById("ro_button").disabled = false;
+      document.getElementById("stop_button").disabled = true;
+
+      document.getElementById("move_button").disabled = false
+      document.getElementById("apply_button").disabled = false
+      document.getElementById("pos_in").disabled = false
+      document.getElementById("adc_button").disabled = false
+      document.getElementById("adc_input").disabled = false
+      document.getElementById("rate_button").disabled = false
+      document.getElementById("rate_select").disabled = false
+      document.getElementById("wavelength_select").disabled = false
+
+      document.getElementById("rotate_check").disabled = false
+      document.getElementById("refill_check").disabled = false
+      document.getElementById("circulate_check").disabled = false
+      document.getElementById("refill_period").disabled = false
+
+      document.getElementById("pump1").disabled = false
+      document.getElementById("pump2").disabled = false
+      document.getElementById("pump3").disabled = false
+
+      document.getElementById("sv1").disabled = false
+      document.getElementById("sv2").disabled = false
+      document.getElementById("sv3").disabled = false
+
+      document.getElementById("bv1").disabled = false
+      document.getElementById("bv2").disabled = false
+      document.getElementById("bv3").disabled = false
+      document.getElementById("bv4").disabled = false
+      document.getElementById("bv5").disabled = false
+      document.getElementById("bv6").disabled = false
+    }
     
     function disable_led(){
       ODBSet("/Equipment/LEDBoard/Settings/Enabled", 0)
@@ -403,7 +474,9 @@
     }
 
     function auto_drain(){
-
+      ODBSet("/Equipment/Automator/Settings/state_major", 1)
+      ODBSet("/Equipment/Automator/Settings/state_minor", 0)
+      lock_ui()
     }
 
     function auto_fill(){
@@ -417,18 +490,21 @@
 
       ODBSet("/Equipment/Automator/Settings/state_major", 2)
       ODBSet("/Equipment/Automator/Settings/state_minor", setting)
-
+      lock_ui()
 
     }
 
     function auto_ro(){
       ODBSet("/Equipment/Automator/Settings/state_major", 2)
       ODBSet("/Equipment/Automator/Settings/state_minor", 31)
+      lock_ui()
     }
 
     function stop_button(){
       ODBSet("/Equipment/Automator/Settings/state_major", 10)
       ODBSet("/Equipment/Automator/Settings/state_minor", 0)
+
+      unlock_ui()
     }
 
     function clickHandler(cb, interface, index){
