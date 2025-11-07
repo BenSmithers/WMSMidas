@@ -19,26 +19,6 @@ def get_color(n, colormax=3.0, cmap="viridis"):
     this_cmap = plt.get_cmap(cmap)
     return this_cmap(n/colormax)
 
-class PlotMaker(midas.frontend.EquipmentBase):
-    def __init__(self, midas_client: midas.client.MidasClient):
-        super().__init__(midas_client)
-        equip_name = "Plotter"
-        devName = "Plotter"
-
-        default_common = midas.frontend.InitialEquipmentCommon()
-        default_common.equip_type = midas.EQ_PERIODIC
-        default_common.buffer_name = "SYSTEM"
-        default_common.trigger_mask = 0
-        default_common.event_id = 18
-        default_common.period_ms = 5000 # not really doing anything...
-        default_common.read_when = midas.RO_RUNNING
-        default_common.log_history = 60 #NOT SURE IF THIS MUST BE UNIQUE 
-
-        self.client = midas_client 
-        
-        midas.frontend.EquipmentBase.__init__(self, midas_client, equip_name, default_common)
-        
-
 
 if __name__ == "__main__":
     # Create our client
@@ -50,7 +30,7 @@ if __name__ == "__main__":
     
     # Request events from this buffer that match certain criteria. In this
     # case we will only be told about events with an "event ID" of 14.
-    request_id = client.register_event_request(buffer_handle, event_id = 10)
+    request_id = client.register_event_request(buffer_handle, event_id = 19)
     
     tstamps = []
     triggers = []
@@ -73,6 +53,7 @@ if __name__ == "__main__":
             print("Received event with timestamp %s containing banks %s" % (event.header.timestamp, bank_names))
             found_data = False 
             found_time = False 
+            found_led = False
             for bank in event.banks.values():
                 if "NCNT" == bank.name:
                     print("{} {} {}".format(bank.data[0], bank.data[1], bank.data[2]))
@@ -83,17 +64,23 @@ if __name__ == "__main__":
                     recs_dark.append(bank.data[4])
                     found_data = True                 
                 elif "TIME"==bank.name:
-                    tstamps.append(bank.data[0])
+                    if found_time:
+                        client.msg("Plotter found multiple timestamps", True)
+                    tstamps.append(event.header.timestamp)
                     found_time = True 
                 elif "LEDO"==bank.name:
+                    if found_led:
+                        client.msg("Plotter found multiple timestamps", True)
                     waves.append(bank.data[0])
-                    found_time = True 
+                    found_led = True 
                 else:
                     client.msg("Impossible bank name {}".format(bank.name), True)
             if not found_data:
                 client.msg("Event without data!", True)
             if not found_time:
                 client.msg("Event without timestamp!", True)
+            if not found_led:
+                client.msg("Event without LED number!" ,True)
 
             if len(mons)!=len(tstamps):
                 client.msg("Inconsistent data numbers and timestamp numbers: {} and {}".format(len(mons), len(tstamps)))
