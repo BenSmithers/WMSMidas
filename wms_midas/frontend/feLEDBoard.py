@@ -30,7 +30,7 @@ class LEDMidas(midas.frontend.EquipmentBase, LEDBoard):
         default_common.buffer_name = "SYSTEM"
         default_common.trigger_mask = 0
         default_common.event_id = 16
-        default_common.period_ms = 10000 # not really doing anything...
+        default_common.period_ms = 5000 # not really doing anything...
         default_common.read_when = midas.RO_ALWAYS
         default_common.log_history = 60 #NOT SURE IF THIS MUST BE UNIQUE 
 
@@ -40,7 +40,12 @@ class LEDMidas(midas.frontend.EquipmentBase, LEDBoard):
 
         LEDBoard.__init__(self,self.settings["USB"])
 
+        self._event_queue = []
+
     def readout_func(self):
+        if len(self._event_queue)>0:
+            this_evt = self._event_queue.pop()
+            return this_evt
         return None 
     
     def detailed_settings_changed_func(self, path, idx, new_value):
@@ -51,16 +56,21 @@ class LEDMidas(midas.frontend.EquipmentBase, LEDBoard):
             3 - RS/RF 
             4 - TI/TE 
         """
-        
+        n_bank = 0 
+        evt_return = midas.event.Event()
         if path=="/Equipment/LEDBoard/Settings/enabled":
             self.client.msg("Enabling LED" if new_value else "Disabling LED")
             self.enable() if new_value else self.disable()
         elif path=="/Equipment/LEDBoard/Settings/ADC":
-            self.client.msg("Setting ADC to {}".format(new_value))
+            #self.client.msg("Setting ADC to {}".format(new_value))
             self.set_adc(new_value)
+            evt_return.create_bank("LEDA", midas.TID_INT, (new_value,))
+            n_bank +=1 
         elif path=="/Equipment/LEDBoard/Settings/LED":
             self.activate_led(new_value) 
-            self.client.msg("Activating {} LED".format(waves[new_value]))
+            #self.client.msg("Activating {} LED".format(waves[new_value]))
+            evt_return.create_bank("LEDO", midas.TID_INT, (new_value,))
+            n_bank +=1 
         elif path=="/Equipment/LEDBoard/Settings/rate":
             self.set_fast_rate() if new_value else self.set_slow_rate()
             self.client.msg("Fast Rate" if new_value else "Slow Rate")
@@ -71,7 +81,8 @@ class LEDMidas(midas.frontend.EquipmentBase, LEDBoard):
             return 
         newpath = path.replace("Settings", "Variables")
         self.client.odb_set(newpath,new_value,True ,resize_arrays=False)
-
+        if n_bank>0:
+            self._event_queue.append(evt_return)
 
 class feLEDBoard(midas.frontend.FrontendBase):
     def __init__(self, ledmidas:LEDMidas):
