@@ -7,7 +7,7 @@ import collections
 import matplotlib.pyplot as plt 
 plt.style.use("wms.mplstyle")
 import numpy as np 
-from datetime import datetime
+from datetime import datetime, timedelta
 import os 
 wavelens = [np.nan, 450, 410, 365, 295, 278, 255]
 
@@ -52,7 +52,6 @@ if __name__ == "__main__":
             bank_names = ", ".join(b.name for b in event.banks.values())
             print("Received event with timestamp %s containing banks %s" % (event.header.timestamp, bank_names))
             found_data = False 
-            found_time = False 
             found_led = False
             for bank in event.banks.values():
                 if "NCNT" == bank.name:
@@ -63,11 +62,7 @@ if __name__ == "__main__":
                     mon_dark.append(bank.data[3])
                     recs_dark.append(bank.data[4])
                     found_data = True                 
-                elif "TIME"==bank.name:
-                    if found_time:
-                        client.msg("Plotter found multiple timestamps", True)
                     tstamps.append(event.header.timestamp)
-                    found_time = True 
                 elif "LEDO"==bank.name:
                     if found_led:
                         client.msg("Plotter found multiple timestamps", True)
@@ -77,8 +72,6 @@ if __name__ == "__main__":
                     client.msg("Impossible bank name {}".format(bank.name), True)
             if not found_data:
                 client.msg("Event without data!", True)
-            if not found_time:
-                client.msg("Event without timestamp!", True)
             if not found_led:
                 client.msg("Event without LED number!" ,True)
 
@@ -87,6 +80,7 @@ if __name__ == "__main__":
 
             plt.figure(figsize=(10,6))
             dark_date = np.array([datetime.fromtimestamp(entry) for entry in tstamps])
+
 
             np_tstamp = np.array(tstamps)
             np_trig = np.array(triggers)
@@ -99,11 +93,39 @@ if __name__ == "__main__":
             rec_adj = np.log((np_trig - np_recs)/(np_trig - np_recd))
             ratio = monitor_adj / rec_adj
 
+            plot_relative = client.odb_get("/Equipment/Automator/Settings/plot_relative")
+            time_range = client.odb_get("/Equipment/Automator/Settings/plot_time")
+            if plot_relative:
+                min_max = client.odb_get("/Equipment/Automator/Settings/plot_ranges_rel")
+            else:
+                min_max = client.odb_get("/Equipment/Automator/Settings/plot_ranges")
+            baselines = client.odb_get("/Equipment/Automator/Settings/baselines")
+
+            last_stamp = dark_date[-1]
+
+            strip_fine_time = datetime(last_stamp.year, last_stamp.month, last_stamp.day, last_stamp.hour, minute=0, second=0)
+            time_range = [
+                strip_fine_time - 0.5*timedelta(hours=time_range),
+                strip_fine_time + 0.5*timedelta(hours=time_range),
+            ]
+
+
             for i in range(1,7):
-                mask= np_waves==i     
+                mask= np.logical_and( 
+                    np_waves==i,
+                    np.logical_and(
+                        dark_date > time_range[0] ,
+                        dark_date < time_range[1]
+                    )
+                )
 
-                plt.plot(dark_date[mask], ratio[mask], color=get_color(i+1, 8, 'nipy_spectral_r'), label="{} nm".format(wavelens[i]) )        
+                if plot_relative:
+                    plt.plot(dark_date[mask], (ratio[mask] - baselines[i])/baselines[i], color=get_color(i+1, 8, 'nipy_spectral_r'), label="{} nm".format(wavelens[i]) )         
+                else:
+                    plt.plot(dark_date[mask], ratio[mask], color=get_color(i+1, 8, 'nipy_spectral_r'), label="{} nm".format(wavelens[i]) )        
+                
 
+            plt.ylim(min_max[0], min_max[1])
             plt.legend(loc='lower right', facecolor='white', framealpha=1.0, frameon=True, fancybox=True)
             plt.gcf().autofmt_xdate()
             plt.savefig(
