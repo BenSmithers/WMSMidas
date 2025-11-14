@@ -18,10 +18,11 @@
     border: 2px solid #ddd;
     border-radius: 12px;
     background: #f9f9f9;
-    max-width: 800px;
+    max-width: 1400px;
   }
 
   .panel-section {
+    display: grid;
     background: #fff;
     border-radius: 10px;
     padding: 15px;
@@ -130,33 +131,102 @@
 <div id="msidenav"></div>
 <div id="mmain">
     <div class="control-panel">
-        <input type="checkbox" id="rawbutton" checked=true>Show Relative </input>
-        <input type="number" id="maxval" value=0.1>Set Max </input>
-        <input type="number" id="minval" value=-0.1>Set Min </input>
-        <input type="number" id="timerange" value=1>Time Range [hrs] </input>
+        <div class="panel-section">
+        <div class="readout"><input type="checkbox" id="rawbutton" checked=true onchange="boxchange()">Show Relative </input></div>
+        <div class="readout"><input type="number" id="maxval" value=0.1 step='0.01' onchange="rangechange()">Set Max </input></div>
+        <div class="readout"><input type="number" id="minval" value=-0.1 step='0.01' onchange="rangechange()">Set Min </input></div>
+        <div class="readout"><input type="number" id="timerange" value=1 step='0.25' onchange="timechange()">Time Range [hrs] </input></div>
+        </div>
+        <div class="panel-section">
+            <img id="statusImage" src="example.png" alt="Current values" style="max-width:75%;border:1px solid #ccc;border-radius:6px"/> 
+        </div>
     </div>
-    <div class="panel-section">
-        <img id="statusImage" src="example.png" alt="Current values" style="max-width:75%;border:1px solid #ccc;border-radius:6px"/> 
-    </div>
+    
 </div>
 <script type="text/javascript">
     var updateTimerId = 0;
     var updatePeriod = 15000; // 10000; // in msec
 
+    function boxchange(){
+        var is_press = document.getElementById("rawbutton").checked
+        ODBSet("/Equipment/Automator/Settings/plot_relative", is_press)
+
+        if(document.getElementById("rawbutton").checked){
+        mjsonrpc_db_get_values(["/Equipment/Automator/Settings/plot_ranges_rel"]).then(function (rpc){
+            var status = rpc.result.status;
+            var slow = rpc.result.data[0];
+            document.getElementById("minval").value = slow[0].toFixed(2)
+            document.getElementById("maxval").value = slow[1].toFixed(2)
+        })
+      }else{
+        mjsonrpc_db_get_values(["/Equipment/Automator/Settings/plot_ranges"]).then(function (rpc){
+            var status = rpc.result.status;
+            var slow = rpc.result.data[0];
+            document.getElementById("minval").value = slow[0].toFixed(2)
+            document.getElementById("maxval").value = slow[1].toFixed(2)
+        })
+      }
+    } 
     
+    function rangechange(){
+      if(document.getElementById("rawbutton").checked){
+        ODBSet("/Equipment/Automator/Settings/plot_ranges_rel[0]", document.getElementById("minval").value)
+        ODBSet("/Equipment/Automator/Settings/plot_ranges_rel[1]", document.getElementById("maxval").value)
+      }else{
+        ODBSet("/Equipment/Automator/Settings/plot_ranges[0]", document.getElementById("minval").value)
+        ODBSet("/Equipment/Automator/Settings/plot_ranges[1]", document.getElementById("maxval").value)
+      }
+    }
+
+    function timechange(){
+      ODBSet("/Equipment/Automator/Settings/plot_time", document.getElementById("timerange").value)
+    }
 
     function update(){
         clearTimeout(updateTimerId);
-        load()
         console.log("loaded")
         updateTimerId = setTimeout('update()', updatePeriod);
 
         document.getElementById("statusImage").src = "example.png" +"?_ts" + Date.now();
     }
-    function load(){
+    function preload(){
+        
+      mjsonrpc_db_get_values(["/Equipment/Automator/Settings/plot_time"]).then(function (rpc){
+          var status = rpc.result.status;
+          var slow = rpc.result.data[0];
+          document.getElementById("timerange").value = slow
+      })
 
+      mjsonrpc_db_get_values(["/Equipment/Automator/Settings/plot_relative"]).then(function (rpc){
+          var status = rpc.result.status;
+          var slow = rpc.result.data[0];
+          if(slow){
+            document.getElementById("rawbutton").checked = true 
+          }else{
+            document.getElementById("rawbutton").checked = false 
+          }
+            
+      })
+
+      if(document.getElementById("rawbutton").checked){
+        mjsonrpc_db_get_values(["/Equipment/Automator/Settings/plot_ranges_rel"]).then(function (rpc){
+            var status = rpc.result.status;
+            var slow = rpc.result.data[0];
+            document.getElementById("minval").value = slow[0].toFixed(2)
+            document.getElementById("maxval").value = slow[1].toFixed(2)
+        })
+      }else{
+        mjsonrpc_db_get_values(["/Equipment/Automator/Settings/plot_ranges"]).then(function (rpc){
+            var status = rpc.result.status;
+            var slow = rpc.result.data[0];
+            document.getElementById("minval").value = slow[0].toFixed(2)
+            document.getElementById("maxval").value = slow[1].toFixed(2)
+        })
+      }
     }
+    preload()
     update()
+    
 </script>
 
 </body>
