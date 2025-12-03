@@ -249,7 +249,9 @@ class Automator(midas.frontend.EquipmentBase):
                 evt_return.create_bank("REQE", midas.TID_BOOL, (True, ))
                 self._waiting_for_event = True 
 
-            
+        alarm_state = self.client.odb_get("/Equipment/Automator/Variables/complex_alarms")
+        if alarm_state!=0:
+            self.disable_all()
 
         major_state = self.settings["state_major"]
         minor_state = self.settings["state_minor"]
