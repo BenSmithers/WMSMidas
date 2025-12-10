@@ -27,7 +27,8 @@ These scripts are all super independent and generally are just used to communica
 - HVController: 13 
 - Automator:17
 - Plotter:18
-
+- Leak Sense: 21
+- UPS : 22
 
 # ODB Parameters
 
@@ -91,6 +92,24 @@ Script will adjust *settings* for the stage and the board
 
 Stages/LED frontends will see that those have changed
 Teh
+
+## Alarm Checking
+
+Pump1 on but no flow 
+Pump2 on but no flow 
+Pump3 on but no flow 
+
+Transmission outside of bounds 
+
+Dangerous temperature 
+
+Illegal Pressure Value 
+
+Pressure too low with pump on
+
+Water level concerning 
+
+
 
 # To Do
 

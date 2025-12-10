@@ -5,3 +5,4 @@ from wms_midas.utilities.constants import *
 from wms_midas.utilities.read_pico import PicoMeasure
 from wms_midas.utilities.ELLxControl import ELLxConnection
 from wms_midas.utilities.CAENControl import CAENBox, Status
+from wms_midas.utilities.ups_reader import UPS
