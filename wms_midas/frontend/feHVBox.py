@@ -38,6 +38,10 @@ class HVBox(midas.frontend.EquipmentBase, CAENBox):
         status = self.read_state()
         this_v = float(self.read_voltage()["value"])
         this_i = float(self.read_current()["value"])
+        on_ac = bool(self.client.odb_get("/Equipment/UPS/Variables/on_ac"))
+        if not on_ac:
+            self.client.odb_Set("/Equipment/{}/Settings/enabled/".format(self.equip_name), False)
+            self.turn_off()
 
 
         status_vector = []

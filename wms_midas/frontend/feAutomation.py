@@ -252,6 +252,10 @@ class Automator(midas.frontend.EquipmentBase):
         alarm_state = self.client.odb_get("/Equipment/Automator/Variables/complex_alarms")
         if alarm_state!=0:
             self.disable_all()
+        on_ac = bool(self.client.odb_get("/Equipment/UPS/Variables/on_ac"))
+        if not on_ac:
+            self.disable_all()
+
 
         major_state = self.settings["state_major"]
         minor_state = self.settings["state_minor"]
