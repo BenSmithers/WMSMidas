@@ -109,7 +109,6 @@ class PumpConnection(midas.frontend.EquipmentBase):
                 "light":light
             }   
 
-            self.client.odb_set("/Equipment/PumpConnection/Variables/Sensors", ret_dat, create_if_needed=True)
             event = midas.event.Event()
             for key in ret_dat:
                 if key=="waterlevel":
@@ -154,6 +153,7 @@ class PumpConnection(midas.frontend.EquipmentBase):
             self.set_bv(idx, new_value) 
         else:
             self.client.msg("No handler for {}".format(path))
+
 
 class feWMSPump(midas.frontend.FrontendBase):
     def __init__(self, PumpCon):
