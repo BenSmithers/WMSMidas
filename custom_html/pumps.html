@@ -229,6 +229,7 @@
                 <input type="checkbox" id="uv_sterile" onclick="uv_toggle(this)">UV Sterile</input>
                 <input type="checkbox" id="deionize" onclick="deion_toggle(this)">De-Ion</input>
               </div>
+              <input type="button" id="cont_flow" value="Continuous Flow" onclick="start_cont()">
               <input type="button" id='ro_button' value="Fill With RO" onclick="auto_ro()">
               <input type="button" id='stop_button' value="STOP" onclick="stop_button()" disabled=true>
       </div>
@@ -479,6 +480,19 @@
       lock_ui()
     }
 
+    function start_cont(){
+      /* 
+        Called to begin continuous flow of water. 
+      */
+      var filters = Number(document.getElementById("filter").checked)
+      var ionizer = Number(document.getElementById("deionize").checked)
+      var sterile = Number(document.getElementById("uv_sterile").checked) 
+      var setting = 10 + filters + 2*sterile + 4*ionizer
+      ODBSet("/Equipment/Automator/Settings/state_major", 5)
+      ODBSet("/Equipment/Automator/Settings/state_minor", setting)
+      lock_ui()
+
+    }
     function auto_fill(){
       // this is called when the "Fill with tank" button is pressed
       // so we now will drain then fill 
@@ -651,7 +665,7 @@
         var state = rpc.result.data[0]
         if(state){
           unlock_ui()
-          ODBSet("/Equipment/Automator/Settings/enable_gui", False)
+          ODBSet("/Equipment/Automator/Settings/enable_gui", false)
         }
       })
 

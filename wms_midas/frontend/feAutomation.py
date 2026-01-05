@@ -336,6 +336,7 @@ class Automator(midas.frontend.EquipmentBase):
 
         if major_state==10:
             self.disable_all()
+            self.clear_state()
         elif major_state==0:
             """
             Do some simple checks against danger
@@ -465,7 +466,17 @@ class Automator(midas.frontend.EquipmentBase):
                             self.client.odb_set("/Equipment/Automator/Variables/counter",10)
                 self.configure_state([1,0,0], bvs, [1,1,0])
         
-
+        elif major_state==4 or major_state==5:
+            counter_value = self.client.odb_get("/Equipment/Automator/Variables/counter")
+            if counter_value<10:
+                self.client.odb_set("/Equipment/Automator/Variables/counter",counter_value+1)
+                bvs[5] = 0
+            else:
+                bvs[5] = 1
+            
+            bvs[0] = int(return_water)
+            pumps = [0 if major_state==4 else 1, 0, 0 ]
+            self.configure_state(pumps, bvs, [1,1,0])
                  
         else:
             self.client.msg("Unrecognized states: {} and {}".format(major_state, minor_state), True)
