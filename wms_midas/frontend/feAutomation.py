@@ -135,6 +135,7 @@ class Automator(midas.frontend.EquipmentBase):
         self.client.odb_set("/Equipment/Automator/Settings/state_major", 0, False)
         self.client.odb_set("/Equipment/Automator/Settings/state_minor", 0, False)
         self.client.odb_set("/Equipment/Automator/Variables/counter", 0)
+        self.client.odb_set("/Equipment/Automator/Settings/enable_gui", True, False)
 
     def configure_state(self, pumps, ballvalves, solenoids):
         print("configuring state",pumps, ballvalves, solenoids)
@@ -252,7 +253,7 @@ class Automator(midas.frontend.EquipmentBase):
         alarm_state = self.client.odb_get("/Equipment/Automator/Variables/complex_alarms")
         if alarm_state!=0:
             self.disable_all()
-        on_ac = bool(self.client.odb_get("/Equipment/UPS/Variables/on_ac"))
+        on_ac = bool(self.client.odb_get("/Equipment/UPS/Variables/ac_on"))
         if not on_ac:
             self.disable_all()
 
@@ -265,6 +266,7 @@ class Automator(midas.frontend.EquipmentBase):
         # check the alarms
         all_flow = [bool(entry) for entry in self.client.odb_get("/Equipment/PumpConnection/Variables/FLOW")]
         overflow = all_flow[2]
+        draining_flow = all_flow[3]
         outflow = all_flow[4]
         input_pump_state = self.client.odb_get("/Equipment/PumpConnection/Settings/Pump[0]")
         drain_pump = self.client.odb_get("/Equipment/PumpConnection/Settings/Pump[1]")
@@ -309,8 +311,28 @@ class Automator(midas.frontend.EquipmentBase):
         else:
             self._pressure_worry_ticks = 0
             
+        supply_water = filter_number<20 
+        return_water = filter_number<30 and not supply_water
+        reverse_osmosis = (not supply_water) and not(return_water)
+        
+        if supply_water:
+            shift = 10
+        elif return_water:
+            shift = 20
+        else:
+            shift = 30
+        bvs = [0,0,0,0,0,0]
+        micro_charcoal = (filter_number - shift) & 1 == 1
+        if micro_charcoal:
+            bvs[1] = int(micro_charcoal)
 
+        uv_lamp = (filter_number - shift) & 2 == 2
+        if uv_lamp:
+            bvs[2] = int(uv_lamp)
 
+        ion_filter = (filter_number - shift) & 4 == 4
+        if ion_filter:
+            bvs[3] = int(ion_filter)
 
         if major_state==10:
             self.disable_all()
@@ -327,42 +349,29 @@ class Automator(midas.frontend.EquipmentBase):
                 self.configure_state([0,1,0], [0,0,0,0,0,0], [0,0,0])
                 self.client.odb_set("/Equipment/Automator/Variables/counter", 0)
             else: 
-                counter_value = self.client.odb_get("/Equipment/Automator/Variables/counter")
-
-                if counter_value>=self._drain_ticks:
-                    # disable pump, disable automation 
-                    if major_state==1:
-                        self.configure_state([0,0,0], [0,0,0,0,0,0], [0,0,0])
-                        self.clear_state()
+                if not draining_flow:
+                    counter_value = self.client.odb_get("/Equipment/Automator/Variables/counter")
+                    if counter_value>=self._drain_ticks:
+                        # disable pump, disable automation 
+                        if major_state==1:
+                            self.configure_state([0,0,0], [0,0,0,0,0,0], [0,0,0])
+                            self.clear_state()
+                        else:
+                            # we shift the minor state up by 128
+                            self.configure_state([0,0,0], [0,0,0,0,0,0], [0,0,0])
+                            self.client.odb_set("Equipment/Automator/Settings/state_minor", minor_state + 128, False)
+                            self.client.odb_set("/Equipment/Automator/Variables/counter", 0)
+                            self.client.msg("Beginning to Fill Chamber")
                     else:
-                        # we shift the minor state up by 128
-                        self.configure_state([0,0,0], [0,0,0,0,0,0], [0,0,0])
-                        self.client.odb_set("Equipment/Automator/Settings/state_minor", minor_state + 128, False)
-                        self.client.odb_set("/Equipment/Automator/Variables/counter", 0)
-                        self.client.msg("Beginning to Fill Chamber")
-
-                    
+                        self.client.odb_set("/Equipment/Automator/Variables/counter",counter_value+1)
                 else:
-                    self.client.odb_set("/Equipment/Automator/Variables/counter",counter_value+1)
+                    self.client.odb_set("/Equipment/Automator/Variables/counter", 0)
         elif major_state==2: # actively filling! 
             counter_value = self.client.odb_get("/Equipment/Automator/Variables/counter")
             
             # determine desired settings based on micro state 
             # the first 128 are reserved for draining
             
-            
-            supply_water = filter_number<20 
-            return_water = filter_number<30 and not supply_water
-            reverse_osmosis = (not supply_water) and not(return_water)
-            
-            if supply_water:
-                shift = 10
-            elif return_water:
-                shift = 20
-            else:
-                shift = 30
-
-
             if reverse_osmosis:
                 if not bv5_state:
                     self.client.odb_set("/Equipment/PumpConnection/Settings/BallValve[4]", 1)
@@ -431,22 +440,8 @@ class Automator(midas.frontend.EquipmentBase):
                     self.client.msg("Unrecognized minor state {} - exiting ".format(filter_number))
                     self.disable_all()
 
-
             else:
-                if supply_water or return_water:
-                    print(counter_value)
-                    bvs = [0,0,0,0,0,0]
-                    micro_charcoal = (filter_number - shift) & 1 == 1
-                    if micro_charcoal:
-                        bvs[1] = int(micro_charcoal)
-
-                    uv_lamp = (filter_number - shift) & 2 == 2
-                    if uv_lamp:
-                        bvs[2] = int(uv_lamp)
-
-                    ion_filter = (filter_number - shift) & 4 == 4
-                    if ion_filter:
-                        bvs[3] = int(ion_filter)
+                if supply_water or return_water:                    
                     # bv 6 should only be turned on after a little bit 
                     # we wait 10 counts
                     if counter_value<10:
@@ -462,12 +457,16 @@ class Automator(midas.frontend.EquipmentBase):
                                 # we have finished filling! 
                                 self.clear_state()
                                 self.disable_all()
+                                return evt_return 
                             self.client.odb_set("/Equipment/Automator/Variables/counter",counter_value+1)
 
 
                         else: # if it's not overflowing, keep the counter at 10 
                             self.client.odb_set("/Equipment/Automator/Variables/counter",10)
                 self.configure_state([1,0,0], bvs, [1,1,0])
+        
+
+                 
         else:
             self.client.msg("Unrecognized states: {} and {}".format(major_state, minor_state), True)
             self.clear_state()
