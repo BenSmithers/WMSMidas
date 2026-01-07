@@ -24,6 +24,8 @@ class LEDBoard:
                 raise LEDNotFound("Could not find LED board!")
             self._con = serial.Serial(usb_interface, baudrate=BAUD, parity=PARITY, bytesize=DATABIT, stopbits=STOP_BIT)
         time.sleep(1)
+        self._enabled = False 
+
     def __del__(self):
         self.disable()
         self._con.close()
@@ -60,9 +62,9 @@ class LEDBoard:
         
         if not self._fake:
             for letter in msg:
-                self._con.write(bytes(letter, 'ascii'))
+                self._con.write(letter.encode("ASCII"))
                 time.sleep(0.25)
-        return "LED -- {}".format(msg)
+        return "{}".format(msg)
     
     def activate_led(self, which:int):
         if not isinstance(which, int):
@@ -81,12 +83,15 @@ class LEDBoard:
             self._con.readline()
         return "LED -- {}".format(msg.decode())
     def enable(self, *args):
-        if not self._fake:
-            self._con.write("E".encode())
+        if not self._enabled:
+            if not self._fake:
+                self._con.write("E".encode())
         time.sleep(1)
+        self._enabled = True
         return "LED -- enable\n"
         
     def disable(self, *args):
+        self._enabled = False 
         if not self._fake:
             self._con.write("L0\n".encode())
             self._con.write("D\n".encode())
