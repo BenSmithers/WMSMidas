@@ -125,11 +125,18 @@ class PumpConnection(midas.frontend.EquipmentBase):
             self.client.msg("Failed to parse response {}\n".format(e), is_error=True) 
 
     def set_pump(self, number, value):
+        
         message = "pu{} {}".format(
             number+1, "on" if value else "off"
         )
         self.send_receive(message)
         self.client.msg(message)
+
+        if number == 2:
+            message = "over{} {}".format(
+                " 1", "off" if value else "on"
+            )
+            self.send_receive(message)
     def set_sv(self, number, value):
         message = "sv{} {}".format(
             number+1, "on" if value else "off"
