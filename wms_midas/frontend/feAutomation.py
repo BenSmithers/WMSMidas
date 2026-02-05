@@ -64,7 +64,7 @@ scr
 
     6 - Smart Pumped Flow 
         Same as 4 or 5, but pump only on for return water 
-
+    7 - Depressurizing 
     10 - explicit stop! 
 
 """
@@ -106,13 +106,14 @@ class Automator(midas.frontend.EquipmentBase):
         self._last_fill_time = -1 
 
         self._rotation_indexer = -1 
-        self._rotation_steps = [1, 2, 3, 4, 5, 6, 7, -1]
-        self._rotation_steps = [2, 3, 4, 5, -1]
+        self._labels=["450nm", "410nm", "365nm", "295nm", "278nm", "255nm", "235nm", "n/a"]
+        self._rotation_steps = [1, 2, 3, 4, 5, 6, -1]
 
         midas.frontend.EquipmentBase.__init__(self, client, equip_name, default_common)
 
         self.buffer_handle = self.client.open_event_buffer("SYSTEM")
         self.request_id = client.register_event_request(self.buffer_handle, event_id=19)
+        self._waiting_since = -1
 
     def run_start(self, run_no):
         self._running = True
@@ -123,11 +124,13 @@ class Automator(midas.frontend.EquipmentBase):
         self._rotating_waves = self.client.odb_get("/Equipment/Automator/Settings/rotate_waves")
         self._refill_period = self.client.odb_get("/Equipment/Automator/Settings/refill_period")
 
+        self.client.odb_set("/Equipment/Automator/Variables/taking_data",True, True)
         # we need to pull automation 
 
     def run_end(self, run_no):
         self._running = False 
         self._waiting_for_event = False
+        self.client.odb_set("/Equipment/Automator/Variables/taking_data",False, True)
 
     def clear_state(self):
         self.client.msg("Exiting Automation")
@@ -138,7 +141,7 @@ class Automator(midas.frontend.EquipmentBase):
         self.client.odb_set("/Equipment/Automator/Settings/enable_gui", True, False)
 
     def configure_state(self, pumps, ballvalves, solenoids):
-        print("configuring state",pumps, ballvalves, solenoids)
+        #print("configuring state",pumps, ballvalves, solenoids)
         if not len(pumps)==3:
             self.client.msg("Incorrectly configured pump-state config received: {}".format(pumps), is_error=True)
         if not len(ballvalves)==6:
@@ -192,6 +195,7 @@ class Automator(midas.frontend.EquipmentBase):
         self.client.odb_set("/Equipment/ELLXStage/Settings/dest", position)
         self.client.odb_set("/Equipment/LEDBoard/Settings/ADC", adc)
         self.client.odb_set("/Equipment/LEDBoard/Settings/LED", led)
+        self._waiting_since = time.time()
 
     def readout_func(self):
         """
@@ -231,12 +235,17 @@ class Automator(midas.frontend.EquipmentBase):
                     adc_target = self.client.odb_get("/Equipment/LEDBoard/Settings/ADC") 
 
                     pos_value = self.client.odb_get("/Equipment/ELLXStage/Variables/dest")
-                    pos_target = self.client.odb_get("/Equipment/ELLXStage/Variables/dest")
+                    pos_target = self.client.odb_get("/Equipment/ELLXStage/Settings/dest")
 
                     led_value = self.client.odb_get("/Equipment/LEDBoard/Variables/LED")
                     led_target = self.client.odb_get("/Equipment/LEDBoard/Settings/LED")
                     
-                    ready = (adc_value == adc_target) and (led_value==led_target) and (abs(pos_target - pos_value)<0.1)
+                    ready = (adc_value == adc_target) and (led_value==led_target) and (abs(pos_target - pos_value)<0.5)
+                    if (time.time() - self._waiting_since > 30) and (not ready):
+                        # it has been more than a minute, and we're still not ready. Stage may be stuck
+                        self.client.msg("Skipping wavelength {}".format(self._labels[self._rotation_indexer]))
+                        self.step_wavelength()
+
                     if ready:
                         self._waiting_for_led_stage = False 
                         evt_return = midas.event.Event()
@@ -455,9 +464,10 @@ class Automator(midas.frontend.EquipmentBase):
                         # water may be overflowing -  meaning the chamber is full
                         if overflow:
                             if counter_value>self._overflow_ticks:
+                                self.client.odb_set("Equipment/Automator/Settings/state_minor", 0)
+                                self.client.odb_set("Equipment/Automator/Settings/state_major", 7)
+                                self.client.odb_set("/Equipment/Automator/Variables/counter",0)
                                 # we have finished filling! 
-                                self.clear_state()
-                                self.disable_all()
                                 return evt_return 
                             self.client.odb_set("/Equipment/Automator/Variables/counter",counter_value+1)
 
@@ -477,10 +487,19 @@ class Automator(midas.frontend.EquipmentBase):
             bvs[0] = int(return_water)
             pumps = [0 if major_state==4 else 1, 0, 0 ]
             self.configure_state(pumps, bvs, [1,1,0])
-                 
+        elif major_state==7: # depressurize
+            counter_value = self.client.odb_get("/Equipment/Automator/Variables/counter")
+            if counter_value<10:
+                self.client.odb_set("/Equipment/Automator/Variables/counter",counter_value+1)
+                self.configure_state([0,0,0], [0,0,0,0,0,0], [1,1,0])
+                self.client.msg("Depressurizing")
+            else:
+                self.disable_all()
+                self.clear_state()       
         else:
             self.client.msg("Unrecognized states: {} and {}".format(major_state, minor_state), True)
             self.clear_state()
+            self.disable_all()
 
         return evt_return
 
