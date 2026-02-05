@@ -142,6 +142,7 @@ class ELLxConnection:
     def get_info(self):
         return self._send_and_receive(message.RequestInfo)
     def move_absolute(self, distance:float):
+        self._send_and_receive(message.MoveAbsolute, 0)
         return self._send_and_receive(message.MoveAbsolute, int(self._pulses_per_rev*distance))
     def move_relative(self, distance:float):
         return self._send_and_receive(message.MoveRelative, int(self._pulses_per_rev*distance))
