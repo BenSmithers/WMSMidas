@@ -5,7 +5,7 @@ import midas.frontend
 import midas.event
 
 import collections
-
+import time 
 from wms_midas.utilities import LEDBoard
 
 waves = ["",
@@ -59,17 +59,25 @@ class LEDMidas(midas.frontend.EquipmentBase, LEDBoard):
         n_bank = 0 
         evt_return = midas.event.Event()
         if path=="/Equipment/LEDBoard/Settings/enabled":
-            self.client.msg("Enabling LED" if new_value else "Disabling LED")
+            
+            if (self._enabled and new_value):
+                pass
+            else:
+                self.client.msg("Enabling LED" if new_value else "Disabling LED")
             self.enable() if new_value else self.disable()
         elif path=="/Equipment/LEDBoard/Settings/ADC":
-            #self.client.msg("Setting ADC to {}".format(new_value))
-            self.set_adc(new_value)
-            evt_return.create_bank("LEDA", midas.TID_INT, (new_value,))
+            
+            rval = self.set_adc(int(new_value))
+            time.sleep(3)
+            #self.client.msg("Setting ADC with {}".format(rval))
+            #evt_return.create_bank("ADC ", midas.TID_INT, (new_value,))
             n_bank +=1 
         elif path=="/Equipment/LEDBoard/Settings/LED":
+            # we have seen how 
+            self.set_adc(1023)
             self.activate_led(new_value) 
-            #self.client.msg("Activating {} LED".format(waves[new_value]))
-            evt_return.create_bank("LEDO", midas.TID_INT, (new_value,))
+            #self.client.msg("Activating {} LED and setting ADC to 1023".format(waves[new_value]))
+            #evt_return.create_bank("LED ", midas.TID_INT, (new_value,))
             n_bank +=1 
         elif path=="/Equipment/LEDBoard/Settings/rate":
             self.set_fast_rate() if new_value else self.set_slow_rate()
@@ -81,8 +89,7 @@ class LEDMidas(midas.frontend.EquipmentBase, LEDBoard):
             return 
         newpath = path.replace("Settings", "Variables")
         self.client.odb_set(newpath,new_value,True ,resize_arrays=False)
-        if n_bank>0:
-            self._event_queue.append(evt_return)
+
 
 class feLEDBoard(midas.frontend.FrontendBase):
     def __init__(self, ledmidas:LEDMidas):
