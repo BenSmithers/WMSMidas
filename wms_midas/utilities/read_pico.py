@@ -254,7 +254,9 @@ class PicoMeasure:
             Get threshold
         """
         trigger, chanb, chand = self.measure(True)
-        #time_sample = np.linspace(0, (self.totalSamples - 1) * self.sampleIntervalNs, self.totalSamples)
+
+        
+        time_sample = np.linspace(0, (self.totalSamples - 1) * self.actualSampleIntervalNs, self.totalSamples)
         if peak:
             bins = np.linspace(0, 200, 129)
         else:
@@ -264,38 +266,25 @@ class PicoMeasure:
             mon_peaks = -1*fold_min(chanb, nmerge=370)
             rec_peaks = -1*fold_min(chand, nmerge=370)
         else:
-            # we drop this down to just a difference in the sign (-2, 0, +2)
-            # but shifted down by the threshold 
-            # so +2 is crossing up, -2 is crossing down, 0 is staying above/below 
-            crossings = np.diff(np.sign(trigger - 1000))
-            #  call the crossing-down ones nothing
-            crossings[crossings<0] = 0
-            # and get the places where we are crossing up. hit times! 
-            crossings = np.where(crossings)[0]
 
-            window = int(370 / self.actualSampleIntervalNs)
-            skip = 0 # 42  int(0.6*window)
-            
-            mon_peaks = []
-            rec_peaks = []
-            for ic in crossings:
-                if len(chanb[ic+skip:ic+window])==0:
-                    continue
-                #print(window*np.sum(chanb[ic+360:ic+window])/10)
-                # peak distribution
-                if peak:
-                    mon_peaks.append(-1*np.min(chanb[ic+skip:ic+window]) + np.mean(chanb[ic+window-10:ic+window]))
-                    rec_peaks.append(-1*np.min(chand[ic+skip:ic+window]) + np.mean(chand[ic+window-10:ic+window]) )
-                else:
-                # waveform sum with pedestal subtraction
-                    mon_peaks.append(np.sum(chanb[ic+skip:ic+window])/window - np.sum(chanb[ic+window-10:ic+window]/10) )
-                    rec_peaks.append(np.sum(chand[ic+skip:ic+window])/window - np.sum(chand[ic:ic+10])/10)
+            ctime, trig_bin = get_cfd_time(time_sample, trigger, 1000,auto_adjust_ped=False, use_rise=True)
+            chunk_length = 90
+            chunk_offsets = np.arange(chunk_length)
+            trig_bin = trig_bin[:-1]
+            chunk_indices = trig_bin[:, None] + chunk_offsets[None, :]
+            cut_waveforms_mon = chanb[chunk_indices]
+            cut_waveforms_rec = chand[chunk_indices]
 
-                #mon_peaks.append(np.sum(chanb[ic+skip:ic+window]) )
-                #rec_peaks.append(np.sum(chand[ic+skip:ic+window]) -400)
+            ped_mon = np.mean(cut_waveforms_mon[:, -10:], axis=1) 
+            ped_rec = np.mean(cut_waveforms_rec[:, -10:], axis=1) 
+            if peak:
+                mon_peaks = -(np.min(cut_waveforms_mon, axis=1) -ped_mon)
+                rec_peaks = -(np.min(cut_waveforms_rec, axis=1) -ped_rec)
+            else:
+                mon_peaks = np.sum(cut_waveforms_mon, axis=1)/chunk_length - ped_mon
+                rec_peaks = np.sum(cut_waveforms_rec, axis=1)/chunk_length - ped_rec
 
-        print(np.mean(mon_peaks))
-        print(np.mean(rec_peaks))
+        print(ped_mon[:10], ped_rec[:10])
         mon_data = np.histogram(mon_peaks, bins)[0]
         rec_data = np.histogram(rec_peaks, bins)[0]
 
