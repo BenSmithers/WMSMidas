@@ -117,6 +117,17 @@
     text-align: right;
 }
 
+.emergy-panel {
+    display: grid;
+    grid-template-columns: repeat(1, 1fr);
+    gap: 20px;
+    margin: 20px;
+    padding: 20px;
+    border: 2px solid #ddd;
+    border-radius: 12px;
+    background: #f9f9f9;
+    max-width: 800px;
+  }
 .control-panel {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -173,15 +184,19 @@
 <div id="mheader"></div>
 <div id="msidenav"></div>
 <div id="mmain">
-
+  <div class="emergy-panel">
+        <input type="button" value="Emergency Unlock Interface" onclick="emergency_unlock()"></input>
+        <input type="button" value="Reset Alarm Code" onclick="reset_alarm()"></input>
+      </div>
   <div class="control-panel">
+      
       <div class="panel-section">
           <h3 class="mtableheader">LED + Stage <input type="button" value="Disable LED" onclick="disable_led()"></input></h3>
           <div class="sub-panel">
               <input type="button" id="apply_button" value="Apply" onclick="apply_wavelength()"></input>
               <select id="wavelength_select" onchange="wavelength_changed()">
                   <option value="1">450 nm</option>
-                  <option value="2">405 nm</option>
+                  <option value="2">410 nm</option>
                   <option value="3">365 nm</option>
                   <option value="4">295 nm</option>
                   <option value="5">278 nm</option>
@@ -233,8 +248,8 @@
               <input type="button" id='ro_button' value="Fill With RO" onclick="auto_ro()">
               <input type="button" id='stop_button' value="STOP" onclick="stop_button()" disabled=true>
       </div>
-  </div>
-
+    </div>
+  
 
   <div class="control-panel">
 
@@ -330,6 +345,7 @@
       document.getElementById("fill_button").disabled = true;
       document.getElementById("drain_button").disabled = true;
       document.getElementById("ro_button").disabled = true;
+      document.getElementById("cont_flow").disabled = true; 
 
       document.getElementById("move_button").disabled = true
       document.getElementById("apply_button").disabled = true
@@ -361,11 +377,23 @@
       document.getElementById("bv6").disabled = true
     }
 
+    function emergency_unlock(){
+      unlock_ui()
+      document.getElementById("stop_button").disabled = false;
+      ODBSet("/Equipment/Automator/Settings/state_major", 0)
+      ODBSet("/Equipment/Automator/Settings/state_minor", 0)
+    }
+
+    function reset_alarm(){
+      ODBSet("/Equipment/Automator/Variables/complex_alarms", 0)
+    }
+
     function unlock_ui(){
       document.getElementById("fill_button").disabled = false;
       document.getElementById("drain_button").disabled = false;
       document.getElementById("ro_button").disabled = false;
       document.getElementById("stop_button").disabled = true;
+      document.getElementById("cont_flow").disabled = false; 
 
       document.getElementById("move_button").disabled = false
       document.getElementById("apply_button").disabled = false
@@ -631,7 +659,27 @@
 
     function load() {
 
-      is_stop = document.getElementById("stop_button").disabled
+      mjsonrpc_db_get_values(["/Equipment/Automator/Settings/state_major"]).then(function (rpc) {
+            
+            var status = rpc.result.status;
+            var automation_on = rpc.result.data[0];
+            
+            if(automation_on){
+              lock_ui()
+            }else{
+              unlock_ui()
+            }
+
+      })
+
+      
+      is_stop = document.getElementById("stop_button").disabled;
+      mjsonrpc_db_get_values(["/Equipment/Automator/Variables/taking_data"]).then(function (rpc) {
+            var status = rpc.result.status;
+            is_stop = rpc.result.data[0];
+      })
+
+
 
       if (!is_stop){
         mjsonrpc_db_get_values(["/Equipment/ELLXStage/Settings/dest"]).then(function (rpc) {
@@ -658,6 +706,17 @@
             
             document.getElementById("wavelength_select").value = slow
         })
+              // apply rate select 
+        mjsonrpc_db_get_values(["/Equipment/LEDBoard/Settings/rate"]).then(function (rpc) {
+            
+            var status = rpc.result.status;
+            var slow = rpc.result.data[0]; // yes or no
+            if(slow){
+              document.getElementById("rate_select").value = 1
+            }else{
+              document.getElementById("rate_select").value = 0
+            }
+        })
       }else{
         console.log("Not changing the stage stuff")
       }
@@ -669,17 +728,7 @@
         }
       })
 
-      // apply rate select 
-      mjsonrpc_db_get_values(["/Equipment/LEDBoard/Settings/rate"]).then(function (rpc) {
-          
-          var status = rpc.result.status;
-          var slow = rpc.result.data[0]; // yes or no
-          if(slow){
-            document.getElementById("rate_select").value = 1
-          }else{
-            document.getElementById("rate_select").value = 0
-          }
-      })
+
 
         mjsonrpc_db_get_values(["/Equipment/ELLXStage/Variables/dest"]).then(function (rpc) {
             
@@ -735,7 +784,7 @@
             var status = rpc.result.status;
             var slow = rpc.result.data[0];
             document.getElementById("water0").innerHTML = "Upper Level <span class='status-circle " + ((slow[2]>0) ? "green" : "red") + "'></span>"
-            document.getElementById("water1").innerHTML = "Middel Level <span class='status-circle " + ((slow[1]>0) ? "green" : "red") + "'></span>"
+            document.getElementById("water1").innerHTML = "Middle Level <span class='status-circle " + ((slow[1]>0) ? "green" : "red") + "'></span>"
             document.getElementById("water2").innerHTML = "Lower Level <span class='status-circle " + ((slow[0]>0) ? "green" : "red") + "'></span>"
 
         })
