@@ -104,10 +104,12 @@ class Automator(midas.frontend.EquipmentBase):
         self._refill_period = -1 
         self._waiting_for_led_stage = False 
         self._last_fill_time = -1 
+        self._adc_set = False
+        self._wait_one_more = True
 
         self._rotation_indexer = -1 
         self._labels=["450nm", "410nm", "365nm", "295nm", "278nm", "255nm", "235nm", "n/a"]
-        self._rotation_steps = [1, 2, 3, 4, 5, 6, -1]
+        self._rotation_steps = [1, 2, 3, 4, 5, 6, 7][::-1]
 
         midas.frontend.EquipmentBase.__init__(self, client, equip_name, default_common)
 
@@ -184,18 +186,18 @@ class Automator(midas.frontend.EquipmentBase):
 
         which_led = self._rotation_steps[self._rotation_indexer]
         if which_led == -1:
-            adc = 1023
             led = 7
         else:
             led = which_led
             # get ADC 
-            adc = self.client.odb_get("/Equipment/LEDBoard/Settings/adc_base[{}]".format(which_led - 1))
         position = self.client.odb_get("/Equipment/ELLXStage/Settings/positions[{}]".format(led - 1))
 
         self.client.odb_set("/Equipment/ELLXStage/Settings/dest", position)
-        self.client.odb_set("/Equipment/LEDBoard/Settings/ADC", adc)
         self.client.odb_set("/Equipment/LEDBoard/Settings/LED", led)
+        #self.client.odb_set("/Equipment/LEDBoard/Settings/ADC", adc)
+        self._adc_set = False
         self._waiting_since = time.time()
+        self._wait_one_more = True
 
     def readout_func(self):
         """
@@ -236,21 +238,31 @@ class Automator(midas.frontend.EquipmentBase):
 
                     pos_value = self.client.odb_get("/Equipment/ELLXStage/Variables/dest")
                     pos_target = self.client.odb_get("/Equipment/ELLXStage/Settings/dest")
-
+                    
                     led_value = self.client.odb_get("/Equipment/LEDBoard/Variables/LED")
                     led_target = self.client.odb_get("/Equipment/LEDBoard/Settings/LED")
+
+                    ready = (adc_value == adc_target) and (led_value==led_target) and (abs(pos_target - pos_value)<0.1) and self._adc_set
+
+                    if led_value==led_target and (not self._adc_set):
+                        which_led = self._rotation_steps[self._rotation_indexer]
+                        adc = self.client.odb_get("/Equipment/LEDBoard/Settings/adc_base[{}]".format(which_led - 1))
+                        self.client.odb_set("/Equipment/LEDBoard/Settings/ADC", adc)
+                        self._adc_set = True
                     
-                    ready = (adc_value == adc_target) and (led_value==led_target) and (abs(pos_target - pos_value)<0.5)
-                    if (time.time() - self._waiting_since > 30) and (not ready):
+                    if ((time.time() - self._waiting_since) > 30) and (not ready):
                         # it has been more than a minute, and we're still not ready. Stage may be stuck
                         self.client.msg("Skipping wavelength {}".format(self._labels[self._rotation_indexer]))
                         self.step_wavelength()
 
                     if ready:
-                        self._waiting_for_led_stage = False 
-                        evt_return = midas.event.Event()
-                        evt_return.create_bank("REQE", midas.TID_BOOL, (True, ))
-                        self._waiting_for_event = True 
+                        if self._wait_one_more:
+                            self._wait_one_more = False 
+                        else:
+                            self._waiting_for_led_stage = False 
+                            evt_return = midas.event.Event()
+                            evt_return.create_bank("REQE", midas.TID_BOOL, (True, ))
+                            self._waiting_for_event = True 
                 else:
                     # move led board and stage to the next logical position
                     self.step_wavelength()
@@ -307,18 +319,31 @@ class Automator(midas.frontend.EquipmentBase):
                 pump2_alarm = True 
             self._pump_worry_ticks +=1 
         elif return_pump_state and (not outflow):
-            if self._pump_worry_ticks > 2:
+            
+            if self._pump_worry_ticks > 10 and False:
                 pump3_alarm = True 
             self._pump_worry_ticks +=1 
         else:
             self._pump_worry_ticks = 0
         
-        if input_pump_state and (p1<20):
-            if self._pressure_worry_ticks > 2:
+        if input_pump_state and (p1<10):
+            if self._pressure_worry_ticks > 15:
                 low_pressure_alarm = True 
             self._pressure_worry_ticks += 1
         else:
             self._pressure_worry_ticks = 0
+        
+        if self._pump_worry_ticks>10:
+            if pump1_alarm:
+                alarm_state = alarm_state | 1  
+            if pump2_alarm:
+                alarm_state = alarm_state | 2 
+            if pump3_alarm:
+                alarm_state = alarm_state | 4  
+        if low_pressure_alarm:
+            alarm_state =  alarm_state | 64
+
+        self.client.odb_set("/Equipment/Automator/Variables/complex_alarms", alarm_state)
             
         supply_water = filter_number<20 
         return_water = filter_number<30 and not supply_water
