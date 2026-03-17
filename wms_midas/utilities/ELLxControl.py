@@ -94,9 +94,6 @@ class ELLxConnection:
                 raw_response = b"0PO"+ _encode_signed_long(args[0], 8)
                 resp = message.response_handler(raw_response)
 
-
-
-
         data = {
             "call":this_call.encode(*args),
             "response":raw_response,
@@ -141,8 +138,29 @@ class ELLxConnection:
         return self._send_and_receive(message.RequestPosition)
     def get_info(self):
         return self._send_and_receive(message.RequestInfo)
+    
+    def _get_intermediate_step(self, destination:float):
+        """
+        Get an intermediate over-shoot location to move to before moving to the actual target location
+        """
+        current_pos = self.get_position()["data"] 
+
+        print("step from {} to {}".format(current_pos, destination))
+            
+        if destination>=10 and destination<=50:
+            # if we're going towards +60 (destionation greater), then we will step 5mm beyond the destination
+            # otherwise, we'll step 5mm behind the destination 
+            step = 5 if current_pos<destination else -5 
+            return destination + step 
+        elif destination<10:
+            return 0 
+        elif destination>50:
+            return 60  
+        else:
+            raise Exception("Unreachable")
+
     def move_absolute(self, distance:float):
-        self._send_and_receive(message.MoveAbsolute, 0)
+        self._send_and_receive(message.MoveAbsolute, int(self._pulses_per_rev*self._get_intermediate_step(distance)))
         return self._send_and_receive(message.MoveAbsolute, int(self._pulses_per_rev*distance))
     def move_relative(self, distance:float):
         return self._send_and_receive(message.MoveRelative, int(self._pulses_per_rev*distance))
