@@ -117,6 +117,9 @@ class Automator(midas.frontend.EquipmentBase):
         self.request_id = client.register_event_request(self.buffer_handle, event_id=19)
         self._waiting_since = -1
 
+        self.client.msg("Initialized")
+
+
     def run_start(self, run_no):
         self._running = True
         self._waiting_for_event = False
@@ -132,6 +135,10 @@ class Automator(midas.frontend.EquipmentBase):
     def run_end(self, run_no):
         self._running = False 
         self._waiting_for_event = False
+        self._waiting_for_led_stage = False
+        self._wait_one_more = True
+        self._adc_set = False
+        self._waiting_since = -1
         self.client.odb_set("/Equipment/Automator/Variables/taking_data",False, True)
 
     def clear_state(self):
@@ -202,17 +209,7 @@ class Automator(midas.frontend.EquipmentBase):
     def readout_func(self):
         """
             Progress the automator 
-        """
-        evt_return = None 
-        if self._waiting_for_event and self._running:
-            event = self.client.receive_event(self.buffer_handle, async_flag=True)
-            if event is None:
-                pass 
-            else:
-                self._waiting_for_event = False  # no longer waiting! 
 
-
-        """
             This function gets regularly called. It manages requesting picoscope events from the Picoscope frontend
             It also manages reconfiguring the LED board and ELLX stage
 
@@ -228,6 +225,14 @@ class Automator(midas.frontend.EquipmentBase):
 
                 if we aren't waiting on them (yet!), we step to the next LED and start waiting 
         """
+        evt_return = None 
+        if self._waiting_for_event and self._running:
+            event = self.client.receive_event(self.buffer_handle, async_flag=True)
+            if event is None:
+                pass 
+            else:
+                self._waiting_for_event = False  # no longer waiting! 
+
         # we're not longer waiting for an event, so we're ready to go
         if (not self._waiting_for_event) and self._running:
             if self._rotating_waves:
@@ -310,7 +315,7 @@ class Automator(midas.frontend.EquipmentBase):
         pump2_alarm = False 
         pump3_alarm = False 
         low_pressure_alarm = False 
-        if input_pump_state and (not all_flow[0]) and (filter_number!=31):
+        if False and (input_pump_state and (not all_flow[0]) and (filter_number!=31)):
             if self._pump_worry_ticks > 2:
                 pump1_alarm = True 
             self._pump_worry_ticks +=1 
@@ -326,7 +331,7 @@ class Automator(midas.frontend.EquipmentBase):
         else:
             self._pump_worry_ticks = 0
         
-        if input_pump_state and (p1<10):
+        if input_pump_state and (p1<10) and False:
             if self._pressure_worry_ticks > 15:
                 low_pressure_alarm = True 
             self._pressure_worry_ticks += 1
@@ -536,10 +541,12 @@ class feAutomation(midas.frontend.FrontendBase):
 
     def begin_of_run(self, run_number):
         self.equipment["Automator"].run_start(run_number)
+        self.client.msg("Frontend has seen start of run number %d" % run_number)
 
 
     def end_of_run(self, run_number):
         self.equipment["Automator"].run_end(run_number) 
+        self.client.msg("Frontend has seen end of run number %d" % run_number)
     
 
 if __name__ == "__main__":
