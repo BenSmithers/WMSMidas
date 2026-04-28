@@ -291,6 +291,7 @@ class Automator(midas.frontend.EquipmentBase):
 
         # check the alarms
         all_flow = [bool(entry) for entry in self.client.odb_get("/Equipment/PumpConnection/Variables/FLOW")]
+        chamber_flow = all_flow[1]
         overflow = all_flow[2]
         draining_flow = all_flow[3]
         outflow = all_flow[4]
@@ -413,15 +414,15 @@ class Automator(midas.frontend.EquipmentBase):
             # the first 128 are reserved for draining
             
             if reverse_osmosis:
-                if not bv5_state:
-                    self.client.odb_set("/Equipment/PumpConnection/Settings/BallValve[4]", 1)
                 if filter_number==31: # pressurizing
                     self.client.odb_set("/Equipment/Automator/Variables/timestamp", time.time())
                     self.configure_state([1,0,0], [0,0,0,0,1,1], [1,0,0])
 
-                    if p1>70: # input pressure check 
+                    if p1>55: # input pressure check 
+                        self.client.msg("Filling RO Tank")
                         self.client.odb_set("Equipment/Automator/Settings/state_minor", minor_state + 1, False)
                     elif p4>22: # check osmo pressure 
+                        self.client.msg("Filling Chamber")
                         self.client.odb_set("Equipment/Automator/Settings/state_minor", minor_state + 2, False)
 
 
@@ -438,12 +439,15 @@ class Automator(midas.frontend.EquipmentBase):
                                 "TUBE", midas.TID_FLOAT, time.time()
                             )
                             self.client.odb_set("Equipment/Automator/Settings/state_minor", minor_state + 2, False)
+                            self.client.msg("Bleeding RO")
                             return evt_return 
                     else:
                         self.client.odb_set("/Equipment/Automator/Variables/counter",0) 
-                    if (p4>22 or ((time.time()-osmo_last_time)/60)>1): # fill chamber 
+                    if (p4>18 or ((time.time()-osmo_last_time)/60)>1): # fill chamber 
+                        self.client.msg("Filling Chamber")
                         self.client.odb_set("Equipment/Automator/Settings/state_minor", minor_state + 1, False)
-                    elif p1<50: # re-pressurize
+                    elif p1<35: # re-pressurize
+                        self.client.msg("Pressurizing Tank")
                         self.client.odb_set("Equipment/Automator/Settings/state_minor", minor_state - 1, False)
 
                 elif filter_number==33: # filling chamber
@@ -451,22 +455,15 @@ class Automator(midas.frontend.EquipmentBase):
                     if overflow:
                         self.client.odb_set("/Equipment/Automator/Variables/counter",counter_value+1)
                         if counter_value>5:
-                            if evt_return is None:
-                                evt_return = midas.event.Event()
-                            evt_return.create_bank(
-                                "TUBE", midas.TID_FLOAT, time.time()
-                            )
+                            self.client.msg("Bleeding RO")
                             self.client.odb_set("Equipment/Automator/Settings/state_minor", minor_state + 1, False)
                             return evt_return 
                     else:
                         self.client.odb_set("/Equipment/Automator/Variables/counter",0) 
-                    self.configure_state([0,0,0], [0,0,0,0,1,1], [1,0,1])
-                    if p4<5.6 or p1<35:
+                    self.configure_state([0,0,0], [0,0,0,0,1,1], [1,1,1])
+                    if p4<4.5 or p1<30:
+                        self.client.msg("Pressurizing")
                         self.client.odb_set("Equipment/Automator/Settings/state_minor", minor_state - 2, False)
-                        
-                    else:
-                        self.configure_state([0,0,0], [0,0,0,0,1,1], [1,1,1])
-                        if (not self.client.odb_get("/Equipment/PumpConnection/Settings/Solenoid[1]")): self.client.odb_set("/Equipment/PumpConnection/Settings/Solenoid[1]", 1)
 
                 elif filter_number==34: # bleeding RO tank 
                     self.configure_state([0,0,0], [0,0,0,0,1,0], [0,1,0])
